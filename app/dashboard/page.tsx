@@ -40,8 +40,16 @@ interface Stats {
 }
 
 const statCards = [
-  { key: "totalUsers", label: "Total Users", accent: "var(--color-primary)" },
-  { key: "totalInterns", label: "Total Interns", accent: "var(--color-success)" },
+  { key: "totalUsers", label: "Total Users", color: "text-primary", bg: "bg-primary/10", border: "border-primary/20", icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  )},
+  { key: "totalInterns", label: "Total Interns", color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+  )},
 ];
 
 export default function AdminDashboard() {
@@ -82,16 +90,21 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="alert-loading">
-        <p>Loading dashboard…</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ padding: "2rem" }}>
-        <div className="alert-error">{error}</div>
+      <div className="p-8">
+        <div className="alert-error max-w-lg mx-auto flex items-center gap-3">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {error}
+        </div>
       </div>
     );
   }
@@ -101,82 +114,114 @@ export default function AdminDashboard() {
   });
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "1100px", margin: "0 auto" }}>
+    <div className="p-8 max-w-7xl mx-auto">
       {/* Page Header */}
-      <div style={{ marginBottom: "2rem" }}>
-        <h1 className="page-title">Admin Dashboard</h1>
-        <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem", marginTop: "0.25rem" }}>{today}</p>
+      <div className="mb-10">
+        <h1 className="text-3xl font-bold text-white tracking-tight">Admin Dashboard</h1>
+        <p className="text-zinc-500 text-sm mt-1">{today}</p>
       </div>
 
       {/* Stat Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
-        {statCards.map(({ key, label, accent }) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        {statCards.map(({ key, label, color, bg, border, icon }) => (
           <div
             key={key}
-            className="card"
-            style={{ borderTop: `3px solid ${accent}`, paddingTop: "1.25rem" }}
+            className={`card relative overflow-hidden group hover:scale-[1.02] transition-transform duration-300 border-white/10 bg-white/[0.02]`}
           >
-            <p style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--color-text-secondary)", marginBottom: "0.5rem" }}>
-              {label}
-            </p>
-            <p style={{ fontSize: "2.25rem", fontWeight: 700, letterSpacing: "-0.03em", color: accent, lineHeight: 1 }}>
-              {stats?.[key as keyof Stats] as number ?? 0}
-            </p>
+            <div className="flex items-center justify-between mb-4">
+              <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center ${color}`}>
+                {icon}
+              </div>
+              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{label}</span>
+            </div>
+            <div className="flex items-end justify-between">
+              <h3 className={`text-4xl font-bold text-white tracking-tighter`}>
+                {stats?.[key as keyof Stats] as number ?? 0}
+              </h3>
+            </div>
+            <div className={`absolute bottom-0 left-0 h-1 w-full opacity-30 ${bg.replace('/10', '')}`} />
           </div>
         ))}
       </div>
 
-      {/* Bottom grid: table + actions */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 220px", gap: "1.25rem", alignItems: "start" }}>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Department Table */}
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <h2 className="section-title">Interns by Department</h2>
-            <span className="badge badge-primary">{stats?.departmentCounts.length ?? 0} departments</span>
+        <div className="card lg:col-span-2 p-0 border-white/10 bg-white/[0.02] overflow-hidden">
+          <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
+            <h2 className="text-lg font-semibold text-white">Interns by Department</h2>
+            <span className="badge bg-primary/20 text-primary border border-primary/10">
+              {stats?.departmentCounts.length ?? 0} Departments
+            </span>
           </div>
-          {stats?.departmentCounts.length === 0 ? (
-            <p style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>
-              No department data yet.
-            </p>
-          ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th className="table-th">Department</th>
-                  <th className="table-th" style={{ textAlign: "right" }}>Interns</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats?.departmentCounts.map((d) => (
-                  <tr key={d.department} className="table-row">
-                    <td className="table-td">{d.department}</td>
-                    <td className="table-td" style={{ textAlign: "right" }}>
-                      <span className="badge badge-success">{d.count}</span>
-                    </td>
+          
+          <div className="overflow-x-auto">
+            {!stats || stats.departmentCounts.length === 0 ? (
+              <div className="py-20 text-center">
+                <p className="text-zinc-500">No department data available yet.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-white/[0.02]">
+                    <th className="px-6 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">Department</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider text-right">Interns</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {stats.departmentCounts.map((d) => (
+                    <tr key={d.department} className="hover:bg-white/[0.01] transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-white">{d.department}</td>
+                      <td className="px-6 py-4 text-right">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold ring-1 ring-emerald-500/20">
+                          {d.count}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="card">
-          <h2 className="section-title" style={{ marginBottom: "1rem" }}>Quick Actions</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-            <Link href="/interns">
-              <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }}>
-                Manage Interns
-              </button>
-            </Link>
-            <Link href="/users">
-              <button className="btn-primary" style={{ width: "100%", justifyContent: "center" }}>
-                Manage Users
-              </button>
-            </Link>
+        {/* Quick Actions Panel */}
+        <div className="space-y-6">
+          <div className="card border-white/10 bg-white/[0.02]">
+            <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+              <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Quick Actions
+            </h2>
+            <div className="flex flex-col gap-3">
+              <Link href="/interns" className="block">
+                <button className="btn-primary w-full justify-center h-11">
+                  Manage Interns
+                </button>
+              </Link>
+              <Link href="/users" className="block">
+                <button className="btn-secondary w-full justify-center h-11 border-white/10 bg-white/5 text-white hover:bg-white/10">
+                  Manage Users
+                </button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="card border-emerald-500/10 bg-emerald-500/[0.02] p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3 opacity-10">
+              <svg className="w-12 h-12 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.364-6.364l-.707-.707M6.343 17.657l-.707.707m12.728 0l-.707-.707" />
+              </svg>
+            </div>
+            <h4 className="text-emerald-500 text-sm font-bold uppercase tracking-wider mb-2">Pro Tip</h4>
+            <p className="text-zinc-400 text-sm leading-relaxed">
+              Use the User Management screen to promote interns to managers or create new administrative accounts.
+            </p>
           </div>
         </div>
       </div>
     </div>
   );
 }
+

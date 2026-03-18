@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import client from "../../lib/apolloClient";
 import { gql } from "@apollo/client";
 import bcrypt from "bcryptjs";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 
 const REGISTER_USER = gql`
   mutation RegisterUser(
@@ -43,186 +44,159 @@ type RegisterUserResult = {
   };
 };
 
+const validationSchema = Yup.object({
+  username: Yup.string().required("Full name is required"),
+  email: Yup.string().email("Invalid email address").required("Email is required"),
+  password: Yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref("password")], "Passwords must match")
+    .required("Please confirm your password"),
+});
+
 export default function Register() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState("user");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleRegister = async () => {
-    setError(null);
+  const formik = useFormik({
+    initialValues: {
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+    validationSchema,
+    onSubmit: async (values, { setSubmitting }) => {
+      setError(null);
+      try {
+        const createdAt = new Date().toISOString();
+        const hashedPassword = await bcrypt.hash(values.password, 10);
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+        // Enforce 'user' role for public registration
+        const role = "user";
 
-    setLoading(true);
-    try {
-      const createdAt = new Date().toISOString();
-      const hashedPassword = await bcrypt.hash(password, 10);
+        const res = await client.mutate<RegisterUserResult>({
+          mutation: REGISTER_USER,
+          variables: { name: values.username, email: values.email, password: hashedPassword, role, created_at: createdAt },
+        });
 
-      const res = await client.mutate<RegisterUserResult>({
-        mutation: REGISTER_USER,
-        variables: { name: username, email, password: hashedPassword, role, created_at: createdAt },
-      });
-
-      if (res.data?.insert_users_one) {
-        alert(`Registration successful as ${res.data.insert_users_one.role}`);
-        router.push("/login");
-      } else if (res.error) {
-        setError("Failed to register user. See console for details.");
-      } else {
-        setError("Failed to register user for unknown reasons");
+        if (res.data?.insert_users_one) {
+          router.push("/login?registered=true");
+        } else {
+          setError("Failed to register user. Please try again.");
+        }
+      } catch (err) {
+        console.error("Apollo error:", err);
+        setError("Registration failed. Email might already be in use.");
+      } finally {
+        setSubmitting(false);
       }
-    } catch (err) {
-      console.error("Apollo error:", err);
-      setError("Error registering user. Maybe email already exists.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
   return (
-    <div style={{ minHeight: "calc(100vh - 4rem)", display: "flex", alignItems: "stretch" }}>
-      {/* Left Branding Panel */}
-      <div style={{
-        flex: "0 0 44%",
-        backgroundColor: "var(--color-nav)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        padding: "3rem 3.5rem",
-        position: "relative",
-        overflow: "hidden",
-      }}>
-        <div style={{ position: "absolute", top: -120, right: -120, width: 400, height: 400, borderRadius: "50%", backgroundColor: "var(--color-primary)", opacity: 0.09, pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: -80, left: -80, width: 280, height: 280, borderRadius: "50%", backgroundColor: "var(--color-primary)", opacity: 0.07, pointerEvents: "none" }} />
-
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: "0.75rem",
-            backgroundColor: "var(--color-primary)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            marginBottom: "1.75rem",
-          }}>
-            <span style={{ color: "#fff", fontSize: "1.125rem", fontWeight: 700 }}>IM</span>
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row bg-app-bg text-black">
+      <div className="flex-1 flex items-center justify-center p-8 md:p-12">
+        <div className="w-full max-w-md">
+          <div className="mb-10 text-center md:text-left">
+            <h2 className="text-3xl font-bold text-black mb-2 tracking-tight">Create your account</h2>
+            <p className="text-zinc-500">Join InternHub and manage your internship efficiently</p>
           </div>
-
-          <h1 style={{
-            color: "#ffffff", fontSize: "2rem", fontWeight: 700,
-            letterSpacing: "-0.03em", lineHeight: 1.25, marginBottom: "1rem",
-          }}>
-            Join the Platform
-          </h1>
-          <p style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.9375rem", lineHeight: 1.75, maxWidth: 310 }}>
-            Create your account and get started managing interns effectively.
-          </p>
-
-          <div style={{ marginTop: "2.5rem", padding: "1.25rem", borderRadius: "0.75rem", backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.8125rem", lineHeight: 1.7 }}>
-              Already have an account?{" "}
-              <Link href="/login" style={{ color: "var(--color-primary)", fontWeight: 500 }}>
-                Sign in here
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Form Panel */}
-      <div style={{
-        flex: 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "3rem 2rem",
-        backgroundColor: "var(--color-app-bg)",
-      }}>
-        <div style={{ width: "100%", maxWidth: 420 }}>
-          <h2 style={{ fontSize: "1.75rem", fontWeight: 700, letterSpacing: "-0.025em", marginBottom: "0.375rem" }}>
-            Create account
-          </h2>
-          <p style={{ color: "var(--color-text-secondary)", fontSize: "0.9375rem", marginBottom: "2rem" }}>
-            Fill in your details to register
-          </p>
 
           {error && (
-            <div className="alert-error" style={{ marginBottom: "1.25rem" }}>
+            <div className="alert-error mb-6 flex items-center gap-3">
+              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {error}
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}>
+          <form onSubmit={formik.handleSubmit} className="space-y-5">
             <div>
-              <label className="form-label">Username</label>
+              <label className="form-label mb-1.5 block">Full Name</label>
               <input
                 type="text"
-                className="form-input"
-                placeholder="Your full name"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                className={`form-input bg-white border-zinc-200 text-black placeholder:text-zinc-400 focus:border-primary/50 ${formik.touched.username && formik.errors.username ? "border-red-500 focus:ring-red-500/20" : ""
+                  }`}
+                placeholder="John Doe"
+                {...formik.getFieldProps("username")}
               />
+              {formik.touched.username && formik.errors.username ? (
+                <div className="text-red-500 text-xs mt-1 font-medium">{formik.errors.username}</div>
+              ) : null}
             </div>
+
             <div>
-              <label className="form-label">Email Address</label>
+              <label className="form-label mb-1.5 block">Email Address</label>
               <input
                 type="email"
-                className="form-input"
-                placeholder="you@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                className={`form-input bg-white border-zinc-200 text-black placeholder:text-zinc-400 focus:border-primary/50 ${formik.touched.email && formik.errors.email ? "border-red-500 focus:ring-red-500/20" : ""
+                  }`}
+                placeholder="john@example.com"
+                {...formik.getFieldProps("email")}
               />
+              {formik.touched.email && formik.errors.email ? (
+                <div className="text-red-500 text-xs mt-1 font-medium">{formik.errors.email}</div>
+              ) : null}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.875rem" }}>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="form-label">Password</label>
+                <label className="form-label mb-1.5 block">Password</label>
                 <input
                   type="password"
-                  className="form-input"
-                  placeholder="Create password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  className={`form-input bg-white border-zinc-200 text-black placeholder:text-zinc-400 focus:border-primary/50 ${formik.touched.password && formik.errors.password ? "border-red-500 focus:ring-red-500/20" : ""
+                    }`}
+                  placeholder="••••••••"
+                  {...formik.getFieldProps("password")}
                 />
+                {formik.touched.password && formik.errors.password ? (
+                  <div className="text-red-500 text-xs mt-1 font-medium">{formik.errors.password}</div>
+                ) : null}
               </div>
               <div>
-                <label className="form-label">Confirm Password</label>
+                <label className="form-label mb-1.5 block">Confirm Password</label>
                 <input
                   type="password"
-                  className="form-input"
-                  placeholder="Repeat password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`form-input bg-white border-zinc-200 text-black placeholder:text-zinc-400 focus:border-primary/50 ${formik.touched.confirmPassword && formik.errors.confirmPassword ? "border-red-500 focus:ring-red-500/20" : ""
+                    }`}
+                  placeholder="••••••••"
+                  {...formik.getFieldProps("confirmPassword")}
                 />
+                {formik.touched.confirmPassword && formik.errors.confirmPassword ? (
+                  <div className="text-red-500 text-xs mt-1 font-medium">{formik.errors.confirmPassword}</div>
+                ) : null}
               </div>
-            </div>
-            <div>
-              <label className="form-label">Role</label>
-              <select
-                className="form-select"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-              </select>
             </div>
 
             <button
-              onClick={handleRegister}
-              className="btn-primary"
-              disabled={loading}
-              style={{ width: "100%", padding: "0.75rem", fontSize: "0.9375rem", marginTop: "0.25rem" }}
+              type="submit"
+              className="btn-primary w-full py-3.5 text-base font-semibold mt-4 shadow-lg shadow-primary/10 transition-all hover:shadow-primary/20 active:scale-[0.98]"
+              disabled={formik.isSubmitting}
             >
-              {loading ? "Creating account…" : "Register"}
+              {formik.isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Processing...
+                </span>
+              ) : (
+                "Create Account"
+              )}
             </button>
-          </div>
+          </form>
+
+          <p className="text-center mt-8 text-zinc-500 text-sm">
+            Already have an account?{" "}
+            <button onClick={() => router.push("/login")} className="text-primary font-bold hover:underline">
+              Sign In
+            </button>
+          </p>
         </div>
       </div>
     </div>
   );
 }
+
