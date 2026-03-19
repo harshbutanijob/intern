@@ -1,6 +1,9 @@
+"use client";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 export default function Home() {
+  const { data: session } = useSession();
   return (
     <main className="min-h-screen bg-slate-50">
       {/* Hero Section */}
@@ -28,16 +31,13 @@ export default function Home() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/register">
-              <button className="btn-primary px-10 py-4 text-sm font-bold uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-1 transition-all duration-300">
-                Get Started Now
-              </button>
-            </Link>
-            <Link href="/login">
-              <button className="bg-white text-slate-700 border border-slate-200 px-10 py-4 text-sm font-bold uppercase tracking-widest rounded-2xl hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-all duration-300">
-                Sign In
-              </button>
-            </Link>
+            {!session && (
+              <Link href="/login">
+                <button className="bg-white text-slate-700 border border-slate-200 px-10 py-4 text-sm font-bold uppercase tracking-widest rounded-2xl hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-all duration-300">
+                  Sign In
+                </button>
+              </Link>
+            )}
           </div>
         </div>
       </section>

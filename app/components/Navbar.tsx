@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -13,6 +12,7 @@ export default function Navbar() {
   const role = session?.user?.role;
 
   const isActive = (path: string) => pathname === path;
+
 
   const navLinks = [
     { name: "Dashboard", href: "/dashboard", show: status === "authenticated" },
@@ -50,8 +50,10 @@ export default function Navbar() {
 
       {/* Right side */}
       <div className="flex items-center gap-4">
-        {status === "authenticated" && session?.user ? (
+        {status === "authenticated" && session?.user? (
+          
           <div className="flex items-center gap-4">
+            <LogoutButton />
             <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
               <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
                 <span className="text-primary text-sm font-bold">{initial}</span>
@@ -61,7 +63,7 @@ export default function Navbar() {
                 <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-1">{role}</p>
               </div>
             </div>
-            <LogoutButton />
+            
           </div>
         ) : (
           <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -75,16 +77,10 @@ export default function Navbar() {
                 Login
               </Link>
             )}
-            {pathname !== "/register" && (
-              <Link href="/register">
-                <button className="btn-primary px-6 py-2.5 text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5 transition-all active:scale-95">
-                  Get Started
-                </button>
-              </Link>
-            )}
+            
           </div>
         )}
       </div>
     </nav>
   );
-}
+}

@@ -6,16 +6,42 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
-    // optional: you can set your JWT cookie name here if custom
   });
 
   const url = req.nextUrl.clone();
+  const path = url.pathname;
 
-  // Protect dashboard
-  if (url.pathname.startsWith("/dashboard")) {
-    if (!token) {
-      // Redirect to login if not logged in
+  // If not logged in → redirect to login
+  if (!token) {
+    if (
+      path.startsWith("/dashboard") ||
+      path.startsWith("/users") ||
+      path.startsWith("/interns")
+    ) {
       url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  const role = token?.role;
+
+  // ADMIN ACCESS
+  if (role === "admin") {
+    return NextResponse.next();
+  }
+
+  // MANAGER ACCESS
+  if (role === "manager") {
+    if (!path.startsWith("/dashboard/manager")) {
+      url.pathname = "/dashboard/manager";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // INTERN ACCESS
+  if (role === "intern") {
+    if (!path.startsWith("/dashboard/user")) {
+      url.pathname = "/dashboard/user";
       return NextResponse.redirect(url);
     }
   }
@@ -23,7 +49,10 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// Apply middleware only to dashboard routes
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/users/:path*",
+    "/interns/:path*",
+  ],
 };

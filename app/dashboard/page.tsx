@@ -117,7 +117,7 @@ export default function AdminDashboard() {
     <div className="p-8 max-w-7xl mx-auto">
       {/* Page Header */}
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-white tracking-tight">Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold  tracking-tight">Admin Dashboard</h1>
         <p className="text-zinc-500 text-sm mt-1">{today}</p>
       </div>
 
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
               <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">{label}</span>
             </div>
             <div className="flex items-end justify-between">
-              <h3 className={`text-4xl font-bold text-white tracking-tighter`}>
+              <h3 className={`text-4xl font-bold tracking-tighter`}>
                 {stats?.[key as keyof Stats] as number ?? 0}
               </h3>
             </div>
@@ -149,7 +149,7 @@ export default function AdminDashboard() {
         {/* Department Table */}
         <div className="card lg:col-span-2 p-0 border-white/10 bg-white/[0.02] overflow-hidden">
           <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
-            <h2 className="text-lg font-semibold text-white">Interns by Department</h2>
+            <h2 className="text-lg font-semibold ">Interns by Department</h2>
             <span className="badge bg-primary/20 text-primary border border-primary/10">
               {stats?.departmentCounts.length ?? 0} Departments
             </span>
@@ -171,7 +171,7 @@ export default function AdminDashboard() {
                 <tbody className="divide-y divide-white/5">
                   {stats.departmentCounts.map((d) => (
                     <tr key={d.department} className="hover:bg-white/[0.01] transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-white">{d.department}</td>
+                      <td className="px-6 py-4 text-sm font-medium ">{d.department}</td>
                       <td className="px-6 py-4 text-right">
                         <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold ring-1 ring-emerald-500/20">
                           {d.count}
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
         {/* Quick Actions Panel */}
         <div className="space-y-6">
           <div className="card border-white/10 bg-white/[0.02]">
-            <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+            <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
               <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>

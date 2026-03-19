@@ -14,8 +14,8 @@ interface Intern {
 }
 
 // GraphQL query to get intern by name
-const GET_INTERN_BY_NAME = gql`
-  query GetInternByName($email: String!) {
+const GET_INTERN_BY_EMAIL = gql`
+  query GetInternByEmail($email: String!) {
     interns(where: { email: { _eq: $email } }) {
       id
       name
@@ -48,7 +48,7 @@ export default async function Dashboard() {
   let intern: Intern | null = null;
   try {
     const res = await client.query<{ interns: Intern[] }>({
-      query: GET_INTERN_BY_NAME,
+      query: GET_INTERN_BY_EMAIL,
       variables: { email: session.user.email },
       fetchPolicy: "network-only",
     });
@@ -66,7 +66,7 @@ export default async function Dashboard() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-white">Profile not found</h2>
+        <h2 className="text-xl font-semibold ">Profile not found</h2>
         <p className="text-zinc-500 mt-2">No intern data found for user <span className="text-white">{session.user.name}</span></p>
       </div>
     );
@@ -75,7 +75,7 @@ export default async function Dashboard() {
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <div className="mb-10 text-center md:text-left">
-        <h1 className="text-3xl font-bold text-white tracking-tight">Welcome, {intern.name}</h1>
+        <h1 className="text-3xl font-bold  tracking-tight">Welcome, {intern.name}</h1>
         <p className="text-zinc-500 mt-1">Intern Portal Overview</p>
       </div>
 
@@ -93,19 +93,19 @@ export default async function Dashboard() {
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                 <div>
                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-1">Email Address</p>
-                   <p className="text-white font-medium">{intern.email}</p>
+                   <p className=" font-medium">{intern.email}</p>
                 </div>
                 <div>
                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-1">College</p>
-                   <p className="text-white font-medium">{intern.college}</p>
+                   <p className=" font-medium">{intern.college}</p>
                 </div>
                 <div>
                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-1">Department</p>
-                   <p className="text-white font-medium">{intern.department}</p>
+                   <p className="font-medium">{intern.department}</p>
                 </div>
                 <div>
                    <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-1">Phone Number</p>
-                   <p className="text-white font-medium">{intern.phone_number}</p>
+                   <p className="font-medium">{intern.phone_number}</p>
                 </div>
              </div>
           </div>
@@ -113,7 +113,7 @@ export default async function Dashboard() {
           <div className="card border-white/10 bg-white/[0.02] p-8 flex items-center justify-between">
              <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-1">Start Date</p>
-                <p className="text-xl font-bold text-white">{new Date(intern.start_date).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
+                <p className="text-xl font-bold">{new Date(intern.start_date).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
              </div>
              <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -124,28 +124,8 @@ export default async function Dashboard() {
         </div>
 
         {/* Sidebar / Status */}
-        <div className="space-y-6">
-           <div className="card border-primary/20 bg-primary/5 p-6 text-center">
-              <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4 border-2 border-primary/30 shadow-lg shadow-primary/10">
-                 <span className="text-primary text-2xl font-bold">{intern.name.charAt(0)}</span>
-              </div>
-              <h4 className="text-white font-bold">{intern.name}</h4>
-              <p className="text-zinc-500 text-sm mt-1">Active Intern</p>
-              <div className="mt-6 pt-6 border-t border-white/5">
-                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Verified Profile</span>
-                 </div>
-              </div>
-           </div>
-           
-           <div className="p-6 rounded-2xl bg-white/[0.01] border border-white/5">
-              <p className="text-zinc-500 text-xs leading-relaxed">
-                 Need to update your details? Contact your department manager <span className="text-zinc-400">({intern.department})</span> for any changes to your profile info.
-              </p>
-           </div>
-        </div>
+        
       </div>
     </div>
   );
-}
+}

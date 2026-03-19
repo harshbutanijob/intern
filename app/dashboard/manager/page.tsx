@@ -61,7 +61,7 @@ export default async function ManagerPage() {
   
   if (!manager) return (
     <div className="p-8 max-w-lg mx-auto text-center">
-      <h2 className="text-xl font-semibold text-white">Manager not found</h2>
+      <h2 className="text-xl font-semibold ">Manager not found</h2>
       <p className="text-zinc-500 mt-2">Could not retrieve manager details for this account.</p>
     </div>
   );
@@ -92,7 +92,7 @@ export default async function ManagerPage() {
       {/* Manager Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Welcome, {manager.name}</h1>
+          <h1 className="text-3xl font-bold  tracking-tight">Welcome, {manager.name}</h1>
           <p className="text-zinc-500 mt-1">Department: <span className="text-primary font-medium">{manager.department}</span></p>
         </div>
         <div className="flex items-center gap-4 p-4 rounded-xl border border-white/5 bg-white/[0.02]">
@@ -101,7 +101,7 @@ export default async function ManagerPage() {
            </div>
            <div className="text-left">
               <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Manager Email</p>
-              <p className="text-sm text-white font-medium">{manager.email}</p>
+              <p className="text-sm  font-medium">{manager.email}</p>
            </div>
         </div>
       </div>
@@ -109,7 +109,7 @@ export default async function ManagerPage() {
       {/* Interns List Card */}
       <div className="card p-0 border-white/10 bg-white/[0.02] overflow-hidden">
         <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
-          <h2 className="text-lg font-semibold text-white">Interns in {manager.department}</h2>
+          <h2 className="text-lg font-semibold ">Interns in {manager.department}</h2>
           <span className="badge bg-emerald-500/20 text-emerald-500 border border-emerald-500/10">
             {interns?.length ?? 0} Active Interns
           </span>
@@ -137,14 +137,7 @@ export default async function ManagerPage() {
               <tbody className="divide-y divide-white/5">
                 {interns.map((intern) => (
                   <tr key={intern.id} className="hover:bg-white/[0.01] transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-400">
-                          {intern.name.charAt(0)}
-                        </div>
-                        <span className="text-sm font-medium text-white">{intern.name}</span>
-                      </div>
-                    </td>
+                    <td className="px-6 py-4 text-sm text-zinc-400">{intern.name}</td>
                     <td className="px-6 py-4 text-sm text-zinc-400">{intern.email}</td>
                     <td className="px-6 py-4 text-sm text-zinc-400">{intern.college}</td>
                     <td className="px-6 py-4 text-sm text-zinc-400">{intern.phone_number}</td>
@@ -162,4 +155,4 @@ export default async function ManagerPage() {
       </div>
     </div>
   );
-}
+}

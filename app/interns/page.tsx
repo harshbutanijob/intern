@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import client from "../../lib/apolloClient";
+import { gql } from "@apollo/client";
+import bcrypt from "bcryptjs";
 import { GET_INTERNS, INSERT_INTERN, UPDATE_INTERN, DELETE_INTERN } from "../../lib/queries";
 
 interface Intern {
@@ -14,6 +16,39 @@ interface Intern {
   start_date: string;
 }
 
+const INSERT_USER = gql`
+mutation InsertUser($name:String!, $email:String!, $password:String!) {
+  insert_users_one(object:{
+    name:$name,
+    email:$email,
+    password:$password,
+    role:"intern",
+    department:null
+  }) {
+    id
+  }
+}
+`;
+
+const UPDATE_USER = gql`
+mutation UpdateUser($name:String!, $email:String!) {
+  update_users(
+    where:{email:{_eq:$email}},
+    _set:{name:$name}
+  ){
+    affected_rows
+  }
+}
+`;
+
+const DELETE_USER = gql`
+mutation DeleteUser($email:String!) {
+  delete_users(where:{email:{_eq:$email}}){
+    affected_rows
+  }
+}
+`;
+
 const emptyForm: Omit<Intern, "id"> = {
   name: "", email: "", college: "", department: "", phone_number: "", start_date: "",
 };
@@ -22,7 +57,6 @@ const formFields: { name: keyof typeof emptyForm; label: string; placeholder: st
   { name: "name", label: "Name", placeholder: "Full name" },
   { name: "email", label: "Email", placeholder: "intern@college.edu" },
   { name: "college", label: "College", placeholder: "College name" },
-  { name: "department", label: "Department", placeholder: "e.g. Engineering" },
   { name: "phone_number", label: "Phone", placeholder: "+1 555 000 0000" },
   { name: "start_date", label: "Start Date", placeholder: "", type: "date" },
 ];
@@ -36,6 +70,7 @@ export default function Interns() {
   const [editId, setEditId] = useState<number | null>(null);
   const [filterCollege, setFilterCollege] = useState<string>("");
   const [filterDepartment, setFilterDepartment] = useState<string>("");
+  const [saving, setSaving] = useState(false);
 
   const fetchInterns = async () => {
     try {
@@ -59,31 +94,85 @@ export default function Interns() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async () => {
-    try {
-      if (editId) {
-        await client.mutate({ mutation: UPDATE_INTERN, variables: { id: editId, ...form } });
-      } else {
-        await client.mutate({ mutation: INSERT_INTERN, variables: { ...form } });
-      }
-      setForm(emptyForm);
-      setEditId(null);
-      fetchInterns();
-    } catch (err) {
-      console.error(err);
-      setError("Failed to save intern");
-    }
-  };
+ const handleSubmit = async () => {
 
-  const handleDelete = async (id: number) => {
-    try {
-      await client.mutate({ mutation: DELETE_INTERN, variables: { id } });
-      fetchInterns();
-    } catch (err) {
-      console.error(err);
-      setError("Failed to delete intern");
+  // check duplicate email in interns list
+  const emailExists = interns.some(
+    (i) => i.email.toLowerCase() === form.email.toLowerCase()
+  );
+
+  if (!editId && emailExists) {
+    setError("Intern with this email already exists");
+    return;
+  }
+
+  try {
+
+    if (editId) {
+
+      await client.mutate({
+        mutation: UPDATE_INTERN,
+        variables: { id: editId, ...form }
+      });
+
+      await client.mutate({
+        mutation: UPDATE_USER,
+        variables: {
+          name: form.name,
+          email: form.email
+        }
+      });
+
+    } else {
+
+      await client.mutate({
+        mutation: INSERT_INTERN,
+        variables: { ...form }
+      });
+
+      const hashedPassword = await bcrypt.hash(`${form.name}@123`, 10);
+
+      await client.mutate({
+        mutation: INSERT_USER,
+        variables: {
+          name: form.name,
+          email: form.email,
+          password: hashedPassword
+        }
+      });
+
     }
-  };
+
+    setForm(emptyForm);
+    setEditId(null);
+    fetchInterns();
+
+  } catch (err) {
+    console.error(err);
+    setError("Failed to save intern");
+  }
+};
+
+  const handleDelete = async (id: number, email: string) => {
+  try {
+
+    await client.mutate({
+      mutation: DELETE_INTERN,
+      variables: { id }
+    });
+
+    await client.mutate({
+      mutation: DELETE_USER,
+      variables: { email }
+    });
+
+    fetchInterns();
+
+  } catch (err) {
+    console.error(err);
+    setError("Failed to delete intern");
+  }
+};
 
   const handleEdit = (intern: Intern) => {
     setEditId(intern.id);
@@ -192,10 +281,33 @@ export default function Interns() {
                 />
               </div>
             ))}
+
+            {/* Department Dropdown */}
+            <div>
+              <div>
+                <label className="form-label">Department</label>
+                <select
+                  name="department"
+                  className="form-select"
+                  value={form.department}
+                  onChange={(e) =>
+                    setForm({ ...form, department: e.target.value })
+                  }
+                >
+                  <option value="">Select Department</option>
+                  <option value="PHP">PHP</option>
+                  <option value="Dotnet">Dotnet</option>
+                </select>
+              </div>
+            </div>
           </div>
           <div style={{ display: "flex", gap: "0.75rem" }}>
-            <button className="btn-primary" onClick={handleSubmit}>
-              {editId ? "Update Intern" : "Add Intern"}
+           <button
+              className="btn-primary"
+              onClick={handleSubmit}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : editId ? "Update Intern" : "Add Intern"}
             </button>
             {editId && (
               <button
@@ -226,7 +338,7 @@ export default function Interns() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
-                    {["Name", "Email", "College", "Department", "Phone", "Start Date", "Actions"].map((h) => (
+                    {["Name", "Email", "College",  "Phone","Department", "Start Date", "Actions"].map((h) => (
                       <th key={h} className="table-th">{h}</th>
                     ))}
                   </tr>
@@ -241,13 +353,14 @@ export default function Interns() {
                         <span className="badge badge-primary">{intern.department}</span>
                       </td>
                       <td className="table-td" style={{ color: "var(--color-text-secondary)" }}>{intern.phone_number}</td>
+                       <td className="table-td" style={{ color: "var(--color-text-secondary)" }}>{intern.department}</td>
                       <td className="table-td" style={{ color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>{intern.start_date}</td>
                       <td className="table-td">
                         <div style={{ display: "flex", gap: "0.5rem" }}>
                           <button className="btn-secondary btn-sm" onClick={() => handleEdit(intern)}>
                             Edit
                           </button>
-                          <button className="btn-danger btn-sm" onClick={() => handleDelete(intern.id)}>
+                          <button className="btn-danger btn-sm" onClick={() => handleDelete(intern.id, intern.email)}>
                             Delete
                           </button>
                         </div>

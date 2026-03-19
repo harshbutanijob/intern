@@ -6,8 +6,10 @@ import { GET_ALL_USERS, UPDATE_USER_ROLE } from "../../lib/queries";
 import { User } from "../../types/user";
 import { gql } from "@apollo/client";
 import bcrypt from "bcryptjs";
+import DataTable from "react-data-table-component";
 
-const roles = ["admin", "manager", "user"]; // define allowed roles
+
+const roles = ["admin", "manager"]; // define allowed roles
 
 const CREATE_USER = gql`
   mutation CreateUser($name: String!, $email: String!, $password: String!, $role: String!, $created_at: timestamp!) {
@@ -16,10 +18,19 @@ const CREATE_USER = gql`
       name
       email
       role
+      department
     }
   }
 `;
 
+
+const DELETE_USER = gql`
+  mutation DeleteUser($id: Int!) {
+    delete_users_by_pk(id: $id) {
+      id
+    }
+  }
+`;
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,49 +85,75 @@ export default function AdminUsers() {
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateLoading(true);
-    try {
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      const createdAt = new Date().toISOString();
+  e.preventDefault();
 
-      const res = await client.mutate<{ insert_users_one: User }>({
-        mutation: CREATE_USER,
-        variables: {
-          name: newName,
-          email: newEmail,
-          password: hashedPassword,
-          role: newRole,
-          created_at: createdAt,
-        },
-      });
-
-      if (res.data?.insert_users_one) {
-        setUsers((prev) => [...prev, res.data!.insert_users_one]);
-        setShowAddForm(false);
-        setNewName("");
-        setNewEmail("");
-        setNewPassword("");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to create user. Email might already exist.");
-    } finally {
-      setCreateLoading(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-    </div>
+  // check duplicate email
+  const emailExists = users.some(
+    (u) => u.email.toLowerCase() === newEmail.toLowerCase()
   );
 
+  if (emailExists) {
+    alert("Email already exists!");
+    return;
+  }
+
+  setCreateLoading(true);
+
+  try {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const createdAt = new Date().toISOString();
+
+    const res = await client.mutate<{ insert_users_one: User }>({
+      mutation: CREATE_USER,
+      variables: {
+        name: newName,
+        email: newEmail,
+        password: hashedPassword,
+        role: newRole,
+        created_at: createdAt,
+      },
+    });
+
+    if (res.data?.insert_users_one) {
+      setUsers((prev) => [...prev, res.data!.insert_users_one]);
+
+      setShowAddForm(false);
+      setNewName("");
+      setNewEmail("");
+      setNewPassword("");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Email already exists.");
+  } finally {
+    setCreateLoading(false);
+  }
+};
+
+
+const handleDeleteUser = async (userId: number) => {
+  const confirmDelete = confirm("Are you sure you want to delete this user?");
+  if (!confirmDelete) return;
+
+  try {
+    await client.mutate({
+      mutation: DELETE_USER,
+      variables: { id: userId },
+    });
+
+    // remove user from UI
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+  } catch (err) {
+    console.error(err);
+    alert("Failed to delete user");
+  }
+};
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">User Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
           <p className="text-zinc-400 mt-1">Manage platform access and roles for all users.</p>
         </div>
         <button 
@@ -126,22 +163,22 @@ export default function AdminUsers() {
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          {showAddForm ? "Cancel" : "Add New User"}
+          {showAddForm ? "Cancel" : "Add New Admin/Manager"}
         </button>
       </div>
 
       {showAddForm && (
         <div className="card mb-8 border-white/10 bg-white/[0.02] animate-in fade-in slide-in-from-top-4">
-          <h2 className="text-xl font-semibold text-white mb-6">Create New User</h2>
+          <h2 className="text-xl font-semibold  mb-6">Create New </h2>
           <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
             <div>
               <label className="form-label mb-1.5 block">Full Name</label>
               <input
                 type="text"
-                className="form-input bg-white/5 border-white/10 text-white"
+                className="form-input bg-white/5 border-white/10 "
                 placeholder="Name"
                 value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                onChange={(e) => setNewName(e.target.value)}  
                 required
               />
             </div>
@@ -149,7 +186,7 @@ export default function AdminUsers() {
               <label className="form-label mb-1.5 block">Email</label>
               <input
                 type="email"
-                className="form-input bg-white/5 border-white/10 text-white"
+                className="form-input bg-white/5 border-white/10 "
                 placeholder="email@example.com"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
@@ -160,8 +197,8 @@ export default function AdminUsers() {
               <label className="form-label mb-1.5 block">Password</label>
               <input
                 type="password"
-                className="form-input bg-white/5 border-white/10 text-white"
-                placeholder="••••••••"
+                className="form-input bg-white/5 border-white/10 "
+                placeholder="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
@@ -171,21 +208,21 @@ export default function AdminUsers() {
               <label className="form-label mb-1.5 block">Role</label>
               <div className="flex gap-2">
                 <select
-                  className="form-select bg-white/5 border-white/10 text-white flex-1"
+                  className="form-select bg-white/5 border-white/10 flex-1"
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value)}
                 >
                   {roles.map((r) => (
-                    <option key={r} value={r} className="bg-nav text-white">{r}</option>
+                    <option key={r} value={r} className="bg-nav ">{r}</option>
                   ))}
                 </select>
                 <button 
-                  type="submit" 
-                  disabled={createLoading}
-                  className="btn-primary"
-                >
-                  {createLoading ? "..." : "Create"}
-                </button>
+                    type="submit" 
+                    disabled={createLoading}
+                    className="btn-primary"
+                  >
+                    {createLoading ? "Creating..." : "Create"}
+                  </button>
               </div>
             </div>
           </form>
@@ -210,6 +247,8 @@ export default function AdminUsers() {
                 <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-white/5">Name</th>
                 <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-white/5">Email</th>
                 <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-white/5">Role</th>
+                
+                <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-white/5">Department</th>
                 <th className="px-6 py-4 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-white/5">Actions</th>
               </tr>
             </thead>
@@ -217,7 +256,7 @@ export default function AdminUsers() {
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-white/[0.02] transition-colors">
                   <td className="px-6 py-4 text-sm text-zinc-500 text-center">{user.id}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-white">{user.name}</td>
+                  <td className="px-6 py-4 text-sm font-medium ">{user.name}</td>
                   <td className="px-6 py-4 text-sm text-zinc-400">{user.email}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -228,7 +267,8 @@ export default function AdminUsers() {
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-sm text-zinc-400">{user.department}</td>
+                  <td className="px-6 py-4 flex items-center gap-3">
                     <select
                       className="text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-zinc-300 outline-none focus:border-primary/50"
                       value={user.role}
@@ -241,6 +281,10 @@ export default function AdminUsers() {
                         </option>
                       ))}
                     </select>
+
+                    {user.role === "manager" && (
+                      <button onClick={() => handleDeleteUser(user.id)} className="text-red-500 hover:text-red-400 text-sm font-medium" > Delete </button>
+                      )}
                   </td>
                 </tr>
               ))}
@@ -250,4 +294,4 @@ export default function AdminUsers() {
       </div>
     </div>
   );
-}
+}
