@@ -1,18 +1,10 @@
 // lib/types.ts
 export interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  department?: string|null; // Optional, only for managers
-}
-
-export interface Intern {
-  id: number;
-  name: string;
-  email: string;
-  college: string;
-  department: string;
-  phone_number: string;
-  start_date: string;
+  id: number;                   // Primary key
+  name: string;                 // User's full name
+  email: string;                // Unique email
+  password: string;             // Hashed password
+  role: string;                 // "admin", "manager", etc.
+  department_id?: number | null | undefined; // Optional department association
+  created_at?: string | null ;   // ISO timestamp, optional
 }

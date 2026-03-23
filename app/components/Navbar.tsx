@@ -14,10 +14,12 @@ export default function Navbar() {
   const isActive = (path: string) => pathname === path;
 
 
-  const navLinks = [
-    { name: "Dashboard", href: "/dashboard", show: status === "authenticated" },
-    { name: "Manage Users", href: "/users", show: role === "admin" },
-  ];
+const dashboardLink = { name: "Dashboard", href: "/dashboard", show: status === "authenticated" };
+
+const dropdownLinks = [
+  { name: "Manage Users", href: "/users", show: role === "admin" },
+  { name: "Manage Interns", href: "/interns", show: role === "admin" },
+];
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm">
@@ -33,23 +35,46 @@ export default function Navbar() {
         </span>
       </Link>
 
-      {/* Navigation Links */}
-      <div className="hidden md:flex items-center gap-8">
-        {navLinks.filter(link => link.show).map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={`text-sm font-semibold transition-colors hover:text-primary ${
-              isActive(link.href) ? "text-primary" : "text-slate-600"
-            }`}
-          >
-            {link.name}
-          </Link>
-        ))}
-      </div>
-
+    
       {/* Right side */}
-      <div className="flex items-center gap-4">
+      <div className="hidden md:flex items-center gap-4">
+
+            {/* Dashboard Link */}
+            {dashboardLink.show && (
+              <Link
+                href={dashboardLink.href}
+                className={`text-sm font-semibold transition-colors hover:text-primary ${
+                  isActive(dashboardLink.href) ? "text-primary" : "text-slate-600"
+                }`}
+              >
+                {dashboardLink.name}
+              </Link>
+            )}
+
+            {/* Dropdown */}
+            {dropdownLinks.some(link => link.show) && (
+          <div className="relative group">
+            <button className="text-sm font-semibold text-slate-600 hover:text-primary">
+              Manage
+            </button>
+
+            <div className="absolute hidden group-hover:block bg-white shadow-md rounded-md mt-2 w-40">
+              {dropdownLinks
+                .filter(link => link.show)
+                .map(link => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
+                  >
+                    {link.name}
+                  </Link>
+                ))}
+            </div>
+          </div>
+        )}
+
+      
         {status === "authenticated" && session?.user? (
           
           <div className="flex items-center gap-4">

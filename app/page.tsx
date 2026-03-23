@@ -10,8 +10,8 @@ export default function Home() {
       <section className="relative pt-32 pb-20 overflow-hidden">
         {/* Soft Background Accents */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-7xl pointer-events-none">
-           <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2" />
-           <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] translate-x-1/2 translate-y-1/2" />
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-[120px] translate-x-1/2 translate-y-1/2" />
         </div>
 
         <div className="container mx-auto px-6 relative z-10 text-center">
@@ -22,14 +22,14 @@ export default function Home() {
             </span>
             Intern Management Reimagined
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.1] mb-6 max-w-4xl mx-auto">
             Manage your <span className="text-primary italic">Interns</span> with <span className="text-indigo-600">Ease</span>
           </h1>
           <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
             InternHub provides a seamless platform for tracking, managing, and empowering the next generation of talent. Highly scalable and beautifully simple.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             {!session && (
               <Link href="/login">
@@ -49,24 +49,24 @@ export default function Home() {
             <h2 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">Everything You Need</h2>
             <div className="h-1.5 w-20 bg-primary/20 rounded-full mx-auto" />
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { 
-                title: "Role-Based Access", 
-                desc: "Dedicated dashboards for Admins, Managers, and Interns to ensure everyone has what they need.", 
+              {
+                title: "Role-Based Access",
+                desc: "Dedicated dashboards for Admins, Managers, and Interns to ensure everyone has what they need.",
                 icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
                 accent: "text-blue-500 bg-blue-50"
               },
-              { 
-                title: "Department Tracking", 
-                desc: "Organize interns by department and track their progress throughout the internship period.", 
+              {
+                title: "Department Tracking",
+                desc: "Organize interns by department and track their progress throughout the internship period.",
                 icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
                 accent: "text-emerald-500 bg-emerald-50"
               },
-              { 
-                title: "Real-time Updates", 
-                desc: "Instant synchronization with Hasura GraphQL engine for a responsive and modern experience.", 
+              {
+                title: "Real-time Updates",
+                desc: "Instant synchronization with Hasura GraphQL engine for a responsive and modern experience.",
                 icon: "M13 10V3L4 14h7v7l9-11h-7z",
                 accent: "text-amber-500 bg-amber-50"
               },

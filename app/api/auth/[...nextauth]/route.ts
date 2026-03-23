@@ -1,10 +1,9 @@
-// app/api/auth/[...nextauth]/route.ts
+
 import NextAuth, { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { gql } from "@apollo/client";
 import client from "../../../../lib/apolloClient";
 import bcrypt from "bcryptjs";
-import { NextRequest } from "next/server";
 
 
 type User = { id: string; name: string; email: string; password: string; role: string; };
@@ -43,7 +42,7 @@ export const authOptions: AuthOptions = {
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
 
-        // Return user info for session
+        
         return { id: user.id, name: user.name, email: user.email, role: user.role };
       },
     }),
@@ -54,7 +53,7 @@ export const authOptions: AuthOptions = {
         token.id = user.id  ??"";
         token.name = user.name??"";
         token.email = user.email??"";
-        token.role = user.role; // include role in JWT
+        token.role = user.role; 
       }
       return token;
     },
@@ -63,7 +62,7 @@ export const authOptions: AuthOptions = {
         session.user.id = token.id as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
-        session.user.role = token.role as string; // include role in session
+        session.user.role = token.role as string; 
         
       }
       return session;
