@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import bcrypt from "bcryptjs"; // for password hashing
+import DataTable from "react-data-table-component";
 
 const roles = ["admin", "manager","intern"]; // allowed roles
 
@@ -34,6 +35,7 @@ export default function AdminUsers() {
   const [editingDeptId, setEditingDeptId] = useState<number | null>(null);
   const [editingDeptName, setEditingDeptName] = useState("");
   const [deptLoading, setDeptLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
 
  const [form, setForm] = useState({
@@ -43,6 +45,12 @@ export default function AdminUsers() {
   role: "manager",
   department_id: null as number | null,
 });
+
+const filteredUsers = users.filter(
+  (u) =>
+    u.name.toLowerCase().includes(search.toLowerCase()) ||
+    u.email.toLowerCase().includes(search.toLowerCase())
+);
 
   // ---------- FETCH USERS ----------
   const fetchUsers = async () => {
@@ -265,6 +273,83 @@ const handleDeleteDepartment = async (id: number) => {
   const getDeptName = (id: number | null) =>
     departments.find((d) => d.id === id)?.name || "-";
 
+  const columns = [
+  {
+    name: "Name",
+    selector: (row: User) => row.name,
+    sortable: true,
+  },
+  {
+    name: "Email",
+    selector: (row: User) => row.email,
+  },
+  {
+    name: "Department",
+    cell: (row: User) => getDeptName(row.department_id),
+  },
+  {
+    name: "Role",
+    selector: (row: User) => row.role,
+  },
+
+  // Change Role Column
+  {
+    name: "Change Role",
+    cell: (row: User) => (
+      <select
+        className="bg-white/5 border border-white/10 rounded px-2 py-1"
+        value={row.role}
+        onChange={(e) =>
+          handleUpdateUser(row.id, e.target.value, row.department_id)
+        }
+      >
+        {roles
+          .map((r) => (
+            <option key={r}>{r}</option>
+          ))}
+      </select>
+    ),
+  },
+
+  // Change Department Column
+  {
+    name: "Change Department",
+    cell: (row: User) => (
+      <select
+        className="bg-white/5 border border-white/10 rounded px-2 py-1"
+        value={row.department_id ?? ""}
+        onChange={(e) =>
+          handleUpdateUser(
+            row.id,
+            row.role,
+            e.target.value ? Number(e.target.value) : null
+          )
+        }
+      >
+        <option value="">Select Dept</option>
+        {departments.map((d) => (
+          <option key={d.id} value={d.id}>
+            {d.name}
+          </option>
+        ))}
+      </select>
+    ),
+  },
+
+  // Delete Column
+  {
+    name: "Delete",
+    cell: (row: User) => (
+      <button
+        onClick={() => handleDeleteUser(row.id)}
+        className="text-red-500 font-medium"
+      >
+        Delete
+      </button>
+    ),
+  },
+];
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex flex-col items-center justify-center text-center mb-6">
@@ -437,68 +522,28 @@ const handleDeleteDepartment = async (id: number) => {
 
           <div className="card overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Name</th>
-                    <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Email</th>
-                    <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Department</th>
-                    <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Role</th>
-                    <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Change Role/Dept</th>
-                    <th className="px-6 py-4 text-xs text-zinc-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {users.map((user) => (
-                    <tr key={user.id}>
-                      <td className="px-6 py-4">{user.name}</td>
-                      <td className="px-6 py-4">{user.email}</td>
-                      <td className="px-6 py-4">{getDeptName(user.department_id)}</td>
-                      <td className="px-6 py-4">{user.role}</td>
-                      <td className="px-6 py-4 flex gap-2">
-                        <select
-                          className="bg-white/5 border border-white/10 rounded px-2 py-1"
-                          value={user.role}
-                          onChange={(e) =>
-                            handleUpdateUser(user.id, e.target.value, user.department_id)
-                          }
-                        >
-                          {roles.map((r) => (
-                            <option key={r}>{r}</option>
-                          ))}
-                        </select>
-                        <select
-                          className="bg-white/5 border border-white/10 rounded px-2 py-1"
-                          value={user.department_id ?? ""}
-                          onChange={(e) =>
-                            handleUpdateUser(
-                              user.id,
-                              user.role,
-                              e.target.value ? Number(e.target.value) : null
-                            )
-                          }
-                        >
-                          <option value="">Select Dept</option>
-                          {departments.map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-6 py-4">
-                        
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-500"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="card p-4">
+
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Search user..."
+                      className="form-input w-64"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+
+                  <DataTable
+                    columns={columns}
+                    data={filteredUsers}
+                    pagination
+                    highlightOnHover
+                    responsive
+                    progressPending={loading}
+                  />
+
+                </div>
             </div>
           </div>
         </div>

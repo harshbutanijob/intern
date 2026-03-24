@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DataTable from "react-data-table-component";
 
 interface Department {
   id: number;
@@ -20,6 +21,7 @@ interface InternWithUser {
   phone_number: string;
   start_date: string;
 }
+
 
 export default function InternsPage() {
   const [interns, setInterns] = useState<InternWithUser[]>([]);
@@ -51,6 +53,42 @@ export default function InternsPage() {
       (!filterCollege || i.college === filterCollege) &&
       (!filterDepartment || i.department_id === filterDepartment)
   );
+
+const [search, setSearch] = useState("");
+
+  const columns = [
+    {
+      name: "Name",
+      selector: (row: InternWithUser) => row.name,
+      sortable: true,
+    },
+    {
+      name: "Email",
+      selector: (row: InternWithUser) => row.email,
+    },
+    {
+      name: "College",
+      selector: (row: InternWithUser) => row.college,
+    },
+    {
+      name: "Department",
+      selector: (row: InternWithUser) => getDeptName(row.department_id),
+    },
+    {
+      name: "Phone",
+      selector: (row: InternWithUser) => row.phone_number,
+    },
+    {
+      name: "Start Date",
+      selector: (row: InternWithUser) =>
+        row.start_date
+          ? new Date(row.start_date).toLocaleDateString()
+          : "-",
+    },
+  ];
+
+  const filteredData = filteredInterns.filter((item: InternWithUser) =>
+    item.name.toLowerCase().includes(search.toLowerCase()));
 
   const getDeptName = (id: number | null) =>
     departments.find((d) => d.id === id)?.name || "-";
@@ -113,62 +151,26 @@ export default function InternsPage() {
 
       {/* Intern Table */}
       <div className="card overflow-hidden border-white/10 bg-white/[0.02]">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
+        <div className="card border-white/10 bg-white/[0.02] p-4">
 
-            <thead>
-              <tr>
-                <th className="px-6 py-4 text-xs text-zinc-500 uppercase">
-                  Name
-                </th>
-                <th className="px-6 py-4 text-xs text-zinc-500 uppercase">
-                  Email
-                </th>
-                <th className="px-6 py-4 text-xs text-zinc-500 uppercase">
-                  College
-                </th>
-                <th className="px-6 py-4 text-xs text-zinc-500 uppercase">
-                  Department
-                </th>
-                <th className="px-6 py-4 text-xs text-zinc-500 uppercase">
-                  Phone
-                </th>
-                <th className="px-6 py-4 text-xs text-zinc-500 uppercase">
-                  Start Date
-                </th>
-              </tr>
-            </thead>
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search Intern..."
+            className="mb-4 px-3 py-2 border rounded-md w-64"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
-            <tbody className="divide-y divide-white/5">
+          {/* DataTable */}
+          <DataTable
+            columns={columns}
+            data={filteredData}
+            pagination
+            highlightOnHover
+            responsive
+          />
 
-              {filteredInterns.map((i) => (
-                <tr key={i.user_id} className="hover:bg-white/[0.03]">
-
-                  <td className="px-6 py-4">{i.name}</td>
-                  <td className="px-6 py-4">{i.email}</td>
-                  <td className="px-6 py-4">{i.college}</td>
-                  <td className="px-6 py-4">{getDeptName(i.department_id)}</td>
-                  <td className="px-6 py-4">{i.phone_number}</td>
-                  <td className="px-6 py-4">
-                    {i.start_date ? new Date(i.start_date).toLocaleDateString() : "-"}
-                  </td>
-
-                </tr>
-              ))}
-
-              {filteredInterns.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="text-center py-8 text-zinc-400"
-                  >
-                    No interns found
-                  </td>
-                </tr>
-              )}
-
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

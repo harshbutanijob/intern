@@ -54,6 +54,14 @@ const INSERT_INTERN = gql`
   }
 `;
 
+const DELETE_INTERN = gql`
+  mutation DeleteIntern($user_id: Int!) {
+    delete_interns(where: { user_id: { _eq: $user_id } }) {
+      affected_rows
+    }
+  }
+`;
+
 export interface User {
   id: number;
   name: string;
@@ -121,17 +129,46 @@ export async function PUT(req: Request) {
   try {
     const body: { id: number; role?: string; department_id?: number | null } =
       await req.json();
+
     const { id, ...changes } = body;
 
+    // 1️⃣ Update user
     const { data } = await client.mutate<{ update_users_by_pk: User }>({
       mutation: UPDATE_USER,
       variables: { id, changes },
     });
 
-    return NextResponse.json({ user: data?.update_users_by_pk });
+    const updatedUser = data?.update_users_by_pk;
+
+    // 2️⃣ If role becomes intern → insert into interns table
+    if (changes.role === "intern") {
+      await client.mutate({
+        mutation: INSERT_INTERN,
+        variables: {
+          object: {
+            user_id: updatedUser?.id,
+          },
+        },
+      });
+    }
+
+    // 3️⃣ If role changed from intern → remove from interns table
+    if (changes.role && changes.role !== "intern") {
+      await client.mutate({
+        mutation: DELETE_INTERN,
+        variables: {
+          user_id: id,
+        },
+      });
+    }
+
+    return NextResponse.json({ user: updatedUser });
   } catch (err) {
     console.error("PUT /users error:", err);
-    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update user" },
+      { status: 500 }
+    );
   }
 }
 
