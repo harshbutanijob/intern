@@ -1,0 +1,42 @@
+-- Departments table
+CREATE TABLE departments (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Users table
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    email VARCHAR(255),
+    password TEXT,
+    role VARCHAR(50),
+    department_id INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_users_department FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+-- Students / Interns table
+CREATE TABLE students (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE,  -- One-to-one relationship
+    college VARCHAR(255),
+    phone_number VARCHAR(20),
+    start_date DATE DEFAULT CURRENT_DATE,
+    CONSTRAINT fk_interns_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Tasks table
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    description TEXT,
+    assigned_to INTEGER,
+    assigned_by INTEGER,
+    deadline DATE DEFAULT CURRENT_DATE,
+    status TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_tasks_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id),
+    CONSTRAINT fk_tasks_assigned_by FOREIGN KEY (assigned_by) REFERENCES users(id)
+);
