@@ -62,12 +62,28 @@ const DELETE_INTERN = gql`
   }
 `;
 
+const CHECK_EMAIL = gql`
+  query CheckEmail($email: String!) {
+    users(where: { email: { _eq: $email } }) {
+      id
+      email
+    }
+  }
+`;
+
 export interface User {
   id: number;
   name: string;
   email: string;
   role: string;
   department_id: number | null;
+}
+
+interface CheckEmailResponse {
+  users: {
+    id: number;
+    email: string;
+  }[];
 }
 
 // GET Users
@@ -90,6 +106,23 @@ export async function POST(req: Request) {
 
     const body: Omit<User, "id"> & { password: string } = await req.json();
 
+    // 🔹 CHECK EMAIL EXIST
+    const { data: emailData } = await client.query<CheckEmailResponse>({
+  query: CHECK_EMAIL,
+  variables: { email: body.email },
+  fetchPolicy: "no-cache",
+});
+
+const users = emailData?.users ?? [];
+
+if (users.length > 0) {
+  return NextResponse.json(
+    { error: "Email already exists" },
+    { status: 400 }
+  );
+}
+
+    // 🔹 CREATE USER
     const { data } = await client.mutate<{ insert_users_one: User }>({
       mutation: INSERT_USER,
       variables: { object: body },
@@ -97,9 +130,8 @@ export async function POST(req: Request) {
 
     const createdUser = data?.insert_users_one;
 
-    // If user is intern → create interns record
+    // 🔹 IF INTERN → CREATE INTERN ENTRY
     if (createdUser?.role === "intern") {
-
       await client.mutate({
         mutation: INSERT_INTERN,
         variables: {
@@ -108,7 +140,6 @@ export async function POST(req: Request) {
           }
         }
       });
-
     }
 
     return NextResponse.json({ user: createdUser });
@@ -121,18 +152,38 @@ export async function POST(req: Request) {
       { error: "Failed to create user" },
       { status: 500 }
     );
-
   }
 }
-// UPDATE User
+
 export async function PUT(req: Request) {
   try {
-    const body: { id: number; role?: string; department_id?: number | null } =
+
+    const body: { id: number; email?: string; role?: string; department_id?: number | null } =
       await req.json();
 
-    const { id, ...changes } = body;
+    const { id, email, ...changes } = body;
 
-    // 1️⃣ Update user
+    // 🔹 CHECK EMAIL IF UPDATED
+    if (email) {
+
+      const { data: emailData } = await client.query<CheckEmailResponse>({
+        query: CHECK_EMAIL,
+        variables: { email },
+        fetchPolicy: "no-cache"
+      });
+
+      const existingUser = emailData?.users?.find((u) => u.id !== id);
+
+      if (existingUser) {
+        return NextResponse.json(
+          { error: "Email already exists" },
+          { status: 400 }
+        );
+      }
+
+      (changes as any).email = email;
+    }
+
     const { data } = await client.mutate<{ update_users_by_pk: User }>({
       mutation: UPDATE_USER,
       variables: { id, changes },
@@ -140,7 +191,6 @@ export async function PUT(req: Request) {
 
     const updatedUser = data?.update_users_by_pk;
 
-    // 2️⃣ If role becomes intern → insert into interns table
     if (changes.role === "intern") {
       await client.mutate({
         mutation: INSERT_INTERN,
@@ -152,7 +202,6 @@ export async function PUT(req: Request) {
       });
     }
 
-    // 3️⃣ If role changed from intern → remove from interns table
     if (changes.role && changes.role !== "intern") {
       await client.mutate({
         mutation: DELETE_INTERN,
@@ -163,8 +212,11 @@ export async function PUT(req: Request) {
     }
 
     return NextResponse.json({ user: updatedUser });
+
   } catch (err) {
+
     console.error("PUT /users error:", err);
+
     return NextResponse.json(
       { error: "Failed to update user" },
       { status: 500 }

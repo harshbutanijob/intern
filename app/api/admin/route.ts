@@ -8,7 +8,7 @@ export async function GET() {
     const email = "admin@example.com";
     const plainPassword = "Admin@123"; // change this
     const role = "admin";
-    const department_id = 1;
+    const department_id = "";
 
     try {
         // Hash password

@@ -1,553 +1,486 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import bcrypt from "bcryptjs"; // for password hashing
+import bcrypt from "bcryptjs";
 import DataTable from "react-data-table-component";
 
-const roles = ["admin", "manager","intern"]; // allowed roles
+const roles = ["admin", "manager", "intern"];
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  password?: string;
+  role: string;
+  department_id: number | null;
+  created_at: string | null;
+}
 
 interface Department {
   id: number;
   name: string;
 }
 
-export interface User {
-  id: number;                   // Primary key
-  name: string;                 // User's full name
-  email: string;                // Unique email
-  password: string;             // Hashed password
-  role: string;                 // "admin", "manager", etc.
-  department_id: number | null; // Always present, nullable
-  created_at: string | null;    // ISO timestamp, optional
-}
-
 export default function AdminUsers() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
+  const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+
+  const [loading, setLoading] = useState(true);
   const [createLoading, setCreateLoading] = useState(false);
 
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [deptName, setDeptName] = useState("");
-  const [editingDeptId, setEditingDeptId] = useState<number | null>(null);
-  const [editingDeptName, setEditingDeptName] = useState("");
-  const [deptLoading, setDeptLoading] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+
   const [search, setSearch] = useState("");
 
+  const [apiError, setApiError] = useState("");
+  const [emailError, setEmailError] = useState("");
 
- const [form, setForm] = useState({
-  name: "",
-  email: "",
-  password: "",
-  role: "manager",
-  department_id: null as number | null,
-});
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "manager",
+    department_id: null as number | null,
+  });
 
-const filteredUsers = users.filter(
-  (u) =>
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
-);
+  /* ---------------- FETCH USERS ---------------- */
 
-  // ---------- FETCH USERS ----------
   const fetchUsers = async () => {
+
     setLoading(true);
+
     try {
+
       const res = await fetch("/api/users");
       const data = await res.json();
-      setUsers(data.users || []);
+
+      const cleanUsers = (data?.users || []).filter((u: User) => u && u.id);
+
+      setUsers(cleanUsers);
+
     } catch (err) {
-      console.error(err);
-      alert("Failed to fetch users");
+
+      console.error("Fetch users error:", err);
+
     } finally {
+
       setLoading(false);
+
     }
   };
 
-  // ---------- FETCH DEPARTMENTS ----------
+  /* ---------------- FETCH DEPARTMENTS ---------------- */
+
   const fetchDepartments = async () => {
+
     try {
+
       const res = await fetch("/api/departments");
       const data = await res.json();
-      setDepartments(data.departments || []);
+
+      setDepartments((data?.departments || []).filter(Boolean));
+
     } catch (err) {
-      console.error(err);
+
+      console.error("Fetch departments error:", err);
+
     }
   };
-
-  
 
   useEffect(() => {
+
     fetchUsers();
     fetchDepartments();
+
   }, []);
 
-  // ---------- CREATE USER ----------
+  /* ---------------- FILTER USERS ---------------- */
+
+  const filteredUsers = users.filter((u) => {
+
+    if (!u) return false;
+
+    const name = u.name?.toLowerCase() || "";
+    const email = u.email?.toLowerCase() || "";
+
+    return (
+      name.includes(search.toLowerCase()) ||
+      email.includes(search.toLowerCase())
+    );
+  });
+
+  /* ---------------- FORM CHANGE ---------------- */
+
   const handleFormChange = (
-  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-) => {
-  const { name, value } = e.target;
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
 
-  setForm((prev) => ({
-    ...prev,
-    [name]: name === "department_id" ? (value ? Number(value) : null) : value,
-  }));
-};
+    const { name, value } = e.target;
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+    setForm((prev) => ({
+      ...prev,
+      [name]: name === "department_id" ? (value ? Number(value) : null) : value,
+    }));
+  };
+
+  /* ---------------- EDIT USER ---------------- */
+
+  const handleEditUser = (user: User) => {
+
+    setShowAddForm(true);
+    setEditingUserId(user.id);
+
+    setForm({
+      name: user.name || "",
+      email: user.email || "",
+      password: "",
+      role: user.role || "manager",
+      department_id: user.department_id,
+    });
+  };
+
+  /* ---------------- CREATE / UPDATE USER ---------------- */
+
+  const handleSubmitUser = async (e: React.FormEvent) => {
+
     e.preventDefault();
 
-    const emailExists = users.some(
-  (u) => u.email.toLowerCase() === form.email.toLowerCase()
-);
-    if (emailExists) {
-      alert("Email already exists!");
-      return;
-    }
-
     setCreateLoading(true);
+    setEmailError("");
+    setApiError("");
+
     try {
-      // Hash password before sending
-      const hashedPassword = await bcrypt.hash(form.password, 10);
+
+      let hashedPassword = form.password;
+
+      if (form.password) {
+        hashedPassword = await bcrypt.hash(form.password, 10);
+      }
+
+      const method = editingUserId ? "PUT" : "POST";
+
+      const payload = {
+        id: editingUserId,
+        name: form.name,
+        email: form.email,
+        password: hashedPassword,
+        role: form.role,
+        department_id: form.department_id,
+      };
 
       const res = await fetch("/api/users", {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          password: hashedPassword,
-          role: form.role,
-          department_id: form.department_id ?? null,
-        })
+        body: JSON.stringify(payload),
       });
 
-     const data = await res.json();
-        if (data.user) {
-          setUsers((prev) => [...prev, data.user]);
-          setShowAddForm(false);
-          setForm({
-              name: "",
-              email: "",
-              password: "",
-              role: "manager",
-              department_id: null,
-            });
+      const data = await res.json();
+
+      /* ERROR FROM API */
+
+      if (!res.ok) {
+
+        if (data?.error?.toLowerCase().includes("email")) {
+          setEmailError(data.error);
+        } else {
+          setApiError(data.error || "Operation failed");
         }
+
+        return;
+      }
+
+      /* SUCCESS */
+
+      if (editingUserId) {
+
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === editingUserId ? { ...u, ...data.user } : u
+          )
+        );
+
+      } else {
+
+        setUsers((prev) => [...prev, data.user]);
+
+      }
+
+      setShowAddForm(false);
+      setEditingUserId(null);
+
+      setForm({
+        name: "",
+        email: "",
+        password: "",
+        role: "manager",
+        department_id: null,
+      });
+
     } catch (err) {
+
       console.error(err);
-      alert("Failed to create user");
+      setApiError("Something went wrong");
+
     } finally {
+
       setCreateLoading(false);
-      
+
     }
   };
 
-  // ---------- UPDATE USER ----------
-// UPDATE USER
-const handleUpdateUser = async (userId: number, role: string, department_id: number | null) => {
-  setUpdatingId(userId);
-  try {
-    const res = await fetch(`/api/users`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: userId, role, department_id }),
-    });
+  /* ---------------- DELETE USER ---------------- */
 
-    if (!res.ok) throw new Error("Failed to update user");
-    const data = await res.json();
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, ...data.user } : u))
-    );
-  } catch (err) {
-    console.error(err);
-    alert("Failed to update user");
-  } finally {
-    setUpdatingId(null);
-  }
-};
+  const handleDeleteUser = async (id: number) => {
 
-// DELETE USER
-const handleDeleteUser = async (userId: number) => {
-  if (!confirm("Are you sure you want to delete this user?")) return;
-  try {
-    const res = await fetch(`/api/users`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: userId }),
-    });
+    if (!confirm("Delete this user?")) return;
 
-    if (!res.ok) throw new Error("Failed to delete user");
-    setUsers((prev) => prev.filter((u) => u.id !== userId));
-  } catch (err) {
-    console.error(err);
-    alert("Failed to delete user");
-  }
-};
+    try {
 
-  // ---------- ADD DEPARTMENT ----------
-const handleAddDepartment = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!deptName.trim()) return;
+      const res = await fetch("/api/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
 
-  setDeptLoading(true);
-  try {
-    const res = await fetch("/api/departments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: deptName }),
-    });
-    const data = await res.json();
+      if (!res.ok) throw new Error("Delete failed");
 
-    if (data.department) {
-      // Update local state
-      setDepartments((prev) => [...prev, data.department]);
-      setDeptName(""); // Reset input
-    } else if (data.error) {
-      alert(data.error);
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+
+    } catch (err) {
+
+      console.error(err);
+
     }
-  } catch (err) {
-    console.error(err);
-    alert("Failed to add department");
-  } finally {
-    setDeptLoading(false);
-  }
-};
+  };
 
-// ---------- UPDATE DEPARTMENT ----------
-const handleUpdateDepartment = async (id: number) => {
-  if (!editingDeptName.trim()) return;
-
-  try {
-    const res = await fetch("/api/departments", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, name: editingDeptName }),
-    });
-
-    const data = await res.json();
-    if (data.department) {
-      // Update local state
-      setDepartments((prev) =>
-        prev.map((d) => (d.id === id ? data.department : d))
-      );
-      setEditingDeptId(null);
-      setEditingDeptName("");
-    } else if (data.error) {
-      alert(data.error);
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Failed to update department");
-  }
-};
-
-// ---------- DELETE DEPARTMENT ----------
-const handleDeleteDepartment = async (id: number) => {
-  if (!confirm("Are you sure you want to delete this department?")) return;
-
-  try {
-    const res = await fetch("/api/departments", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-
-    const data = await res.json();
-    if (data.success) {
-      // Remove from local state
-      setDepartments((prev) => prev.filter((d) => d.id !== id));
-    } else if (data.error) {
-      alert(data.error);
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Failed to delete department");
-  }
-};
-
-  // Map department_id to name
-  const getDeptName = (id: number | null) =>
-    departments.find((d) => d.id === id)?.name || "-";
+  /* ---------------- TABLE COLUMNS ---------------- */
 
   const columns = [
-  {
-    name: "Name",
-    selector: (row: User) => row.name,
-    sortable: true,
-  },
-  {
-    name: "Email",
-    selector: (row: User) => row.email,
-  },
-  {
-    name: "Department",
-    cell: (row: User) => getDeptName(row.department_id),
-  },
-  {
-    name: "Role",
-    selector: (row: User) => row.role,
-  },
+    {
+      name: "Name",
+      selector: (row: User) => row?.name || "",
+      sortable: true,
+    },
+    {
+      name: "Email",
+      selector: (row: User) => row?.email || "",
+    },
+    {
+      name: "Role",
+      selector: (row: User) => row?.role || "",
+    },
+    {
+      name: "Edit",
+      cell: (row: User) => (
+        <button
+          onClick={() => handleEditUser(row)}
+          className="text-blue-600"
+        >
+          Edit
+        </button>
+      ),
+    },
+    {
+      name: "Delete",
+      cell: (row: User) => (
+        <button
+          onClick={() => handleDeleteUser(row.id)}
+          className="text-red-600"
+        >
+          Delete
+        </button>
+      ),
+    },
+  ];
 
-  // Change Role Column
-  {
-    name: "Change Role",
-    cell: (row: User) => (
-      <select
-        className="bg-white/5 border border-white/10 rounded px-2 py-1"
-        value={row.role}
-        onChange={(e) =>
-          handleUpdateUser(row.id, e.target.value, row.department_id)
-        }
-      >
-        {roles
-          .map((r) => (
-            <option key={r}>{r}</option>
-          ))}
-      </select>
-    ),
-  },
+return (
+  <div className="min-h-screen bg-white p-10">
 
-  // Change Department Column
-  {
-    name: "Change Department",
-    cell: (row: User) => (
-      <select
-        className="bg-white/5 border border-white/10 rounded px-2 py-1"
-        value={row.department_id ?? ""}
-        onChange={(e) =>
-          handleUpdateUser(
-            row.id,
-            row.role,
-            e.target.value ? Number(e.target.value) : null
-          )
-        }
-      >
-        <option value="">Select Dept</option>
-        {departments.map((d) => (
-          <option key={d.id} value={d.id}>
-            {d.name}
-          </option>
-        ))}
-      </select>
-    ),
-  },
+    <div className="max-w-7xl mx-auto">
 
-  // Delete Column
-  {
-    name: "Delete",
-    cell: (row: User) => (
-      <button
-        onClick={() => handleDeleteUser(row.id)}
-        className="text-red-500 font-medium"
-      >
-        Delete
-      </button>
-    ),
-  },
-];
+      {/* HEADER */}
 
-  return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col items-center justify-center text-center mb-6">
-        <h1 className="text-3xl font-bold">User Management</h1>
-        <p className="text-zinc-400 mt-1">Manage platform access and roles</p>
+      <div className="flex justify-between items-center mb-10">
+
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            User Management
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Manage admins, managers and interns
+          </p>
+        </div>
+
+        <button
+          onClick={() => {
+            setShowAddForm(!showAddForm);
+            setEditingUserId(null);
+          }}
+          className="flex items-center gap-2 border border-gray-300 hover:border-black hover:shadow-md transition px-5 py-2 rounded-lg font-medium"
+        >
+          {showAddForm ? "Cancel" : "+ Add User"}
+        </button>
+
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* DEPARTMENT MANAGEMENT */}
-        <div className="lg:col-span-1">
-          <div className="card border-white/10 bg-white/[0.02] p-6">
-            <h2 className="text-xl font-semibold mb-6">Department Management</h2>
-            <form onSubmit={handleAddDepartment} className="flex gap-3 mb-6">
+      {/* SEARCH BAR */}
+
+      <div className="flex justify-between items-center mb-8">
+
+        <div className="relative w-72">
+
+          <input
+            type="text"
+            placeholder="Search users..."
+            className="w-full border border-gray-300 focus:border-black focus:ring-1 focus:ring-black outline-none px-4 py-2 rounded-lg"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+        </div>
+
+        <p className="text-sm text-gray-500">
+          {filteredUsers.length} users
+        </p>
+
+      </div>
+
+      {/* FORM CARD */}
+
+      {showAddForm && (
+
+        <div className="border border-gray-200 rounded-xl p-6 mb-10 shadow-sm">
+
+          <h2 className="text-lg font-semibold mb-4">
+            {editingUserId ? "Edit User" : "Create User"}
+          </h2>
+
+          {apiError && (
+            <div className="border border-red-300 text-red-600 px-4 py-2 rounded mb-4">
+              {apiError}
+            </div>
+          )}
+
+          <form
+            onSubmit={handleSubmitUser}
+            className="grid grid-cols-1 md:grid-cols-5 gap-4"
+          >
+
+            <input
+              name="name"
+              placeholder="Full Name"
+              value={form.name}
+              onChange={handleFormChange}
+              className="border border-gray-300 px-3 py-2 rounded-lg focus:border-black outline-none"
+              required
+            />
+
+            <div>
+
               <input
-                type="text"
-                className="form-input bg-white/5 border-white/10 flex-1"
-                placeholder="Department name"
-                value={deptName}
-                onChange={(e) => setDeptName(e.target.value)}
+                name="email"
+                placeholder="Email Address"
+                value={form.email}
+                onChange={handleFormChange}
+                className="border border-gray-300 px-3 py-2 rounded-lg w-full focus:border-black outline-none"
                 required
               />
-              <button type="submit" className="btn-primary" disabled={deptLoading}>
-                {deptLoading ? "Adding..." : "Add"}
-              </button>
-            </form>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-2 text-xs text-zinc-500 uppercase">Department</th>
-                    <th className="px-3 py-2 text-xs text-zinc-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {departments.map((dept) => (
-                    <tr key={dept.id}>
-                      <td className="px-3 py-3 text-sm">
-                        {editingDeptId === dept.id ? (
-                          <input
-                            className="form-input bg-white/5 border-white/10"
-                            value={editingDeptName}
-                            onChange={(e) => setEditingDeptName(e.target.value)}
-                          />
-                        ) : (
-                          dept.name
-                        )}
-                      </td>
-                      <td className="px-3 py-3 flex gap-2 text-sm">
-                        {editingDeptId === dept.id ? (
-                          <>
-                            <button
-                              onClick={() => handleUpdateDepartment(dept.id)}
-                              className="text-green-500"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingDeptId(null)}
-                              className="text-zinc-400"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => {
-                                setEditingDeptId(dept.id);
-                                setEditingDeptName(dept.name);
-                              }}
-                              className="text-blue-500"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteDepartment(dept.id)}
-                              className="text-red-500"
-                            >
-                              Delete
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+              {emailError && (
+                <p className="text-red-500 text-xs mt-1">{emailError}</p>
+              )}
+
             </div>
-          </div>
-        </div>
 
-        {/* USER MANAGEMENT */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold">Users</h2>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="btn-primary flex items-center gap-2"
+            <input
+              name="password"
+              type="password"
+              placeholder="Password"
+              value={form.password}
+              onChange={handleFormChange}
+              className="border border-gray-300 px-3 py-2 rounded-lg focus:border-black outline-none"
+            />
+
+            <select
+              name="role"
+              value={form.role}
+              onChange={handleFormChange}
+              className="border border-gray-300 px-3 py-2 rounded-lg focus:border-black outline-none"
             >
-              {showAddForm ? "Cancel" : "Add User"}
+              {roles.map((r) => (
+                <option key={r}>{r}</option>
+              ))}
+            </select>
+
+            <select
+              name="department_id"
+              value={form.department_id ?? ""}
+              onChange={handleFormChange}
+              className="border border-gray-300 px-3 py-2 rounded-lg focus:border-black outline-none"
+            >
+              <option value="">Department</option>
+
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+
+            </select>
+
+            <button
+              type="submit"
+              className="border border-black text-black hover:bg-black hover:text-white transition px-4 py-2 rounded-lg font-medium"
+            >
+              {createLoading
+                ? editingUserId
+                  ? "Updating..."
+                  : "Creating..."
+                : editingUserId
+                ? "Update"
+                : "Create"}
             </button>
-          </div>
 
-          {showAddForm && (
-        <form
-          onSubmit={handleCreateUser}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6"
-        >
-          <input
-            name="name"
-            placeholder="Name"
-            value={form.name}
-            onChange={handleFormChange}
-            className="form-input"
-            required
-          />
+          </form>
 
-          <input
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleFormChange}
-            className="form-input"
-            required
-          />
-
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleFormChange}
-            className="form-input"
-            required
-          />
-
-          <select
-            name="role"
-            value={form.role}
-            onChange={handleFormChange}
-            className="form-select"
-          >
-            {roles.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-
-          <select
-            name="department_id"
-            value={form.department_id ?? ""}
-            onChange={handleFormChange}
-            className="form-select"
-          >
-            <option value="">Select Department</option>
-
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-
-          <button type="submit" className="btn-primary">
-            {createLoading ? "Creating..." : "Create"}
-          </button>
-        </form>
+        </div>
       )}
 
-          <div className="card overflow-hidden">
-            <div className="overflow-x-auto">
-              <div className="card p-4">
+      {/* TABLE CARD */}
 
-                  <div className="mb-4">
-                    <input
-                      type="text"
-                      placeholder="Search user..."
-                      className="form-input w-64"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
+      <div className="border border-gray-200 rounded-xl shadow-sm p-4">
 
-                  <DataTable
-                    columns={columns}
-                    data={filteredUsers}
-                    pagination
-                    highlightOnHover
-                    responsive
-                    progressPending={loading}
-                  />
+        <DataTable
+          keyField="id"
+          columns={columns}
+          data={filteredUsers}
+          pagination
+          highlightOnHover
+          responsive
+          progressPending={loading}
+          striped
+          customStyles={{
+            headCells: {
+              style: {
+                fontWeight: "600",
+                fontSize: "14px",
+                borderBottom: "1px solid #e5e7eb"
+              }
+            },
+            rows: {
+              style: {
+                minHeight: "60px"
+              }
+            }
+          }}
+        />
 
-                </div>
-            </div>
-          </div>
-        </div>
       </div>
+
     </div>
-  );
+
+  </div>
+);
 }
