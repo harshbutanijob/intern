@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import client from "@/lib/apolloClient";
 import { gql } from "@apollo/client";
+import bcrypt from "bcryptjs";
 
+// ---------------------- GraphQL Queries & Mutations ----------------------
 const GET_USERS = gql`
   query GetAllUsers {
     users {
@@ -10,6 +12,7 @@ const GET_USERS = gql`
       email
       role
       department_id
+      created_at
     }
   }
 `;
@@ -22,6 +25,7 @@ const INSERT_USER = gql`
       email
       role
       department_id
+      created_at
     }
   }
 `;
@@ -30,8 +34,11 @@ const UPDATE_USER = gql`
   mutation UpdateUser($id: Int!, $changes: users_set_input!) {
     update_users_by_pk(pk_columns: { id: $id }, _set: $changes) {
       id
+      name
+      email
       role
       department_id
+      created_at
     }
   }
 `;
@@ -43,7 +50,6 @@ const DELETE_USER = gql`
     }
   }
 `;
-
 
 const INSERT_INTERN = gql`
   mutation InsertIntern($object: interns_insert_input!) {
@@ -71,25 +77,10 @@ const CHECK_EMAIL = gql`
   }
 `;
 
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  department_id: number | null;
-}
-
-interface CheckEmailResponse {
-  users: {
-    id: number;
-    email: string;
-  }[];
-}
-
-// GET Users
+// ---------------------- GET Users ----------------------
 export async function GET() {
   try {
-    const { data } = await client.query<{ users: User[] }>({
+    const { data } = await client.query<{ users: any[] }>({
       query: GET_USERS,
       fetchPolicy: "network-only",
     });
@@ -100,135 +91,148 @@ export async function GET() {
   }
 }
 
-// CREATE User
+// ---------------------- CREATE User ----------------------
 export async function POST(req: Request) {
   try {
+    const body = await req.json();
 
-    const body: Omit<User, "id"> & { password: string } = await req.json();
 
-    // 🔹 CHECK EMAIL EXIST
-    const { data: emailData } = await client.query<CheckEmailResponse>({
-  query: CHECK_EMAIL,
-  variables: { email: body.email },
-  fetchPolicy: "no-cache",
-});
 
-const users = emailData?.users ?? [];
+    // Only include department_id if it's not null
+    const insertObject: any = { ...body };
+    if (insertObject.department_id === null || insertObject.department_id === undefined) {
+      delete insertObject.department_id;
+    }
 
-if (users.length > 0) {
-  return NextResponse.json(
-    { error: "Email already exists" },
-    { status: 400 }
-  );
-}
+    // Check if email already exists
+    const { data: emailData } = await client.query({
+      query: CHECK_EMAIL,
+      variables: { email: insertObject.email },
+      fetchPolicy: "no-cache",
+    });
 
-    // 🔹 CREATE USER
-    const { data } = await client.mutate<{ insert_users_one: User }>({
+    if ((emailData?.users ?? []).length > 0) {
+      return NextResponse.json({ error: "Email already exists" }, { status: 400 });
+    }
+
+    // Create user
+    const { data } = await client.mutate({
       mutation: INSERT_USER,
-      variables: { object: body },
+      variables: { object: insertObject },
     });
 
     const createdUser = data?.insert_users_one;
 
-    // 🔹 IF INTERN → CREATE INTERN ENTRY
+    // Add to interns table if role is intern
     if (createdUser?.role === "intern") {
       await client.mutate({
         mutation: INSERT_INTERN,
-        variables: {
-          object: {
-            user_id: createdUser.id
-          }
-        }
+        variables: { object: { user_id: createdUser.id } },
       });
     }
 
     return NextResponse.json({ user: createdUser });
-
   } catch (err) {
-
     console.error("POST /users error:", err);
-
-    return NextResponse.json(
-      { error: "Failed to create user" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
 }
 
+// ---------------------- UPDATE User ----------------------
 export async function PUT(req: Request) {
   try {
+    const body = await req.json();
+    const { id, email, password, role, ...changes } = body;
 
-    const body: { id: number; email?: string; role?: string; department_id?: number | null } =
-      await req.json();
-
-    const { id, email, ...changes } = body;
-
-    // 🔹 CHECK EMAIL IF UPDATED
-    if (email) {
-
-      const { data: emailData } = await client.query<CheckEmailResponse>({
-        query: CHECK_EMAIL,
-        variables: { email },
-        fetchPolicy: "no-cache"
-      });
-
-      const existingUser = emailData?.users?.find((u) => u.id !== id);
-
-      if (existingUser) {
-        return NextResponse.json(
-          { error: "Email already exists" },
-          { status: 400 }
-        );
-      }
-
-      (changes as any).email = email;
+    // Hash password if provided
+    if (password) {
+      changes.password = await bcrypt.hash(password, 10);
     }
 
-    const { data } = await client.mutate<{ update_users_by_pk: User }>({
+    // Check email if updated
+    if (email) {
+      const { data: emailData } = await client.query({
+        query: CHECK_EMAIL,
+        variables: { email },
+        fetchPolicy: "no-cache",
+      });
+      const existingUser = emailData?.users?.find((u: any) => u.id !== id);
+      if (existingUser) {
+        return NextResponse.json({ error: "Email already exists" }, { status: 400 });
+      }
+      changes.email = email;
+    }
+
+    // Remove department_id if null
+    if (changes.department_id === null) {
+      delete changes.department_id;
+    }
+
+    // Fetch the existing user to check old role
+    const { data: userData } = await client.query({
+      query: gql`
+        query GetUser($id: Int!) {
+          users_by_pk(id: $id) {
+            id
+            role
+          }
+        }
+      `,
+      variables: { id },
+      fetchPolicy: "no-cache",
+    });
+
+    const oldRole = userData?.users_by_pk?.role;
+
+    // Update user
+    const { data } = await client.mutate({
       mutation: UPDATE_USER,
-      variables: { id, changes },
+      variables: { id, changes: { ...changes, role } },
     });
 
     const updatedUser = data?.update_users_by_pk;
 
-    if (changes.role === "intern") {
-      await client.mutate({
-        mutation: INSERT_INTERN,
-        variables: {
-          object: {
-            user_id: updatedUser?.id,
-          },
-        },
+    // Sync interns table
+    if (role === "intern" && oldRole !== "intern") {
+      // Add to interns if not exists
+      const { data: existingIntern } = await client.query({
+        query: gql`
+          query GetIntern($user_id: Int!) {
+            interns(where: { user_id: { _eq: $user_id } }) {
+              id
+            }
+          }
+        `,
+        variables: { user_id: updatedUser?.id },
+        fetchPolicy: "no-cache",
       });
-    }
 
-    if (changes.role && changes.role !== "intern") {
+      if ((existingIntern?.interns ?? []).length === 0) {
+        await client.mutate({
+          mutation: INSERT_INTERN,
+          variables: { object: { user_id: updatedUser?.id } },
+        });
+      }
+    } else if (oldRole === "intern" && role !== "intern") {
+      // Remove from interns if exists
       await client.mutate({
         mutation: DELETE_INTERN,
-        variables: {
-          user_id: id,
-        },
+        variables: { user_id: updatedUser?.id },
       });
     }
 
     return NextResponse.json({ user: updatedUser });
-
   } catch (err) {
-
     console.error("PUT /users error:", err);
-
-    return NextResponse.json(
-      { error: "Failed to update user" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
 
-// DELETE User
+// ---------------------- DELETE User ----------------------
 export async function DELETE(req: Request) {
   try {
-    const body: { id: number } = await req.json();
-    const { data } = await client.mutate<{ delete_users_by_pk: { id: number } }>({
+    const body = await req.json();
+    const { data } = await client.mutate({
       mutation: DELETE_USER,
       variables: { id: body.id },
     });
