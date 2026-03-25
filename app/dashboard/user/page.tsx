@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 interface Intern {
   id: number;
@@ -22,109 +21,178 @@ interface Department {
 }
 
 export default function InternDashboard() {
+
   const [intern, setIntern] = useState<Intern | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const [form, setForm] = useState({
     college: "",
     phone_number: "",
     start_date: "",
   });
 
-  // ---------- FETCH DATA ----------
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: "",
+    new_password: "",
+  });
+
+  // ---------------- FETCH DATA ----------------
 
   useEffect(() => {
-  const loadData = async () => {
-    try {
-      const internRes = await fetch("/api/interns");
-      const internData = await internRes.json();
+    const loadData = async () => {
+      try {
 
-      const deptRes = await fetch("/api/departments");
-      const deptData = await deptRes.json();
+        const internRes = await fetch("/api/interns");
+        const internData = await internRes.json();
 
-      setDepartments(deptData.departments || []);
+        const deptRes = await fetch("/api/departments");
+        const deptData = await deptRes.json();
 
-      if (internData?.length > 0) {
-        const userIntern = internData[0];
+        setDepartments(deptData.departments || []);
 
-        setIntern(userIntern);
+        if (internData?.length > 0) {
 
-        setForm({
-          college: userIntern.college || "",
-          phone_number: userIntern.phone_number || "",
-          start_date: userIntern.start_date || "",
-        });
+          const userIntern = internData[0];
+
+          setIntern(userIntern);
+
+          setForm({
+            college: userIntern.college || "",
+            phone_number: userIntern.phone_number || "",
+            start_date: userIntern.start_date || "",
+          });
+        }
+
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
+    };
 
-  loadData();
-}, []);
+    loadData();
+  }, []);
 
-  // ---------- GET DEPARTMENT NAME ----------
+  // ---------------- GET DEPARTMENT NAME ----------------
+
   const getDepartmentName = (id: number | null) => {
     const dept = departments.find((d) => d.id === id);
     return dept ? dept.name : "Not Assigned";
   };
 
-  // ---------- HANDLE FORM ----------
+  // ---------------- HANDLE FORM ----------------
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // ---------- UPDATE ----------
+  // ---------------- UPDATE PROFILE ----------------
+
   const handleUpdate = async () => {
-  if (!intern) return;
 
-  setLoading(true);
+    if (!intern) return;
 
-  try {
-    const res = await fetch("/api/interns", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: intern.user_id,
-        college: form.college,
-        phone_number: form.phone_number,
-        start_date: form.start_date,
-      }),
-    });
+    setLoading(true);
 
-    const updated = await res.json();
+    try {
 
-    if (!updated?.error) {
-      alert("Profile updated successfully");
-      window.location.reload();
-      setEditing(false);
-         // ✅ refresh page
-    } else {
-      alert("Update failed");
+      const res = await fetch("/api/interns", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: intern.user_id,
+          college: form.college,
+          phone_number: form.phone_number,
+          start_date: form.start_date,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.error) {
+        alert("Profile updated successfully");
+        window.location.reload();
+      } else {
+        alert("Update failed");
+      }
+
+    } catch (err) {
+      console.error(err);
     }
-  } catch (err) {
-    console.error("Update error:", err);
-  }
 
-  setLoading(false);
-};
+    setLoading(false);
+  };
+
+  // ---------------- CHANGE PASSWORD ----------------
+
+  const handlePasswordChange = async () => {
+
+    if (!intern) return;
+
+    if (!passwordForm.current_password || !passwordForm.new_password) {
+      alert("Fill all fields");
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+
+      const res = await fetch("/api/users/change-password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: intern.user_id,
+          current_password: passwordForm.current_password,
+          new_password: passwordForm.new_password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert("Password updated successfully");
+        setShowPasswordModal(false);
+
+        setPasswordForm({
+          current_password: "",
+          new_password: "",
+        });
+
+      } else {
+        alert(data.error || "Password update failed");
+      }
+
+    } catch (err) {
+      console.error(err);
+    }
+
+    setPasswordLoading(false);
+  };
+
+  // ---------------- LOADING ----------------
 
   if (!intern) {
     return (
       <div className="p-8 text-center">
-        <p>Loading intern data...</p>
+        Loading intern data...
       </div>
     );
   }
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Intern Dashboard</h1>
 
-      {/* Profile Info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 rounded p-6">
+      <h1 className="text-3xl font-bold mb-6">
+        Intern Dashboard
+      </h1>
+
+      {/* PROFILE CARD */}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white shadow rounded p-6">
 
         <div>
           <p className="text-gray-500 text-sm">Name</p>
@@ -137,6 +205,7 @@ export default function InternDashboard() {
         </div>
 
         {/* College */}
+
         <div>
           <p className="text-gray-500 text-sm">College</p>
 
@@ -150,9 +219,11 @@ export default function InternDashboard() {
           ) : (
             <p className="font-medium">{intern.college}</p>
           )}
+
         </div>
 
         {/* Phone */}
+
         <div>
           <p className="text-gray-500 text-sm">Phone</p>
 
@@ -166,9 +237,11 @@ export default function InternDashboard() {
           ) : (
             <p className="font-medium">{intern.phone_number}</p>
           )}
+
         </div>
 
         {/* Start Date */}
+
         <div>
           <p className="text-gray-500 text-sm">Start Date</p>
 
@@ -181,15 +254,17 @@ export default function InternDashboard() {
               className="border rounded px-3 py-1 w-full"
             />
           ) : (
-             <p className="text-gray-800">
-                {intern.start_date
-                  ? new Date(intern.start_date).toLocaleDateString()
-                  : "-"}
-              </p>
+            <p>
+              {intern.start_date
+                ? new Date(intern.start_date).toLocaleDateString()
+                : "-"}
+            </p>
           )}
+
         </div>
 
-        {/* Department Name */}
+        {/* Department */}
+
         <div>
           <p className="text-gray-500 text-sm">Department</p>
           <p className="font-medium">
@@ -199,16 +274,21 @@ export default function InternDashboard() {
 
       </div>
 
-      {/* Buttons */}
-      <div className="mt-6 flex gap-4">
+      {/* BUTTONS */}
+
+      <div className="mt-6 flex gap-4 flex-wrap">
+
         {!editing ? (
+
           <button
             onClick={() => setEditing(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
             Edit Profile
           </button>
+
         ) : (
+
           <>
             <button
               onClick={handleUpdate}
@@ -225,8 +305,81 @@ export default function InternDashboard() {
               Cancel
             </button>
           </>
+
         )}
+
+        <button
+          onClick={() => setShowPasswordModal(true)}
+          className=" text-black px-4 py-2 rounded"
+        >
+          Change Password
+        </button>
+
       </div>
+
+      {/* PASSWORD MODAL */}
+
+      {showPasswordModal && (
+
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+
+          <div className="bg-white p-6 rounded-lg w-96 shadow">
+
+            <h2 className="text-lg font-semibold mb-4">
+              Change Password
+            </h2>
+
+            <input
+              type="password"
+              placeholder="Current Password"
+              value={passwordForm.current_password}
+              onChange={(e) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  current_password: e.target.value,
+                })
+              }
+              className="border p-2 w-full mb-3 rounded"
+            />
+
+            <input
+              type="password"
+              placeholder="New Password"
+              value={passwordForm.new_password}
+              onChange={(e) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  new_password: e.target.value,
+                })
+              }
+              className="border p-2 w-full mb-4 rounded"
+            />
+
+            <div className="flex justify-end gap-3">
+
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="px-4 py-2 text-black rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handlePasswordChange}
+                disabled={passwordLoading}
+                className="px-4 py-2 text-black rounded"
+              >
+                {passwordLoading ? "Updating..." : "Update"}
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
     </div>
   );
 }

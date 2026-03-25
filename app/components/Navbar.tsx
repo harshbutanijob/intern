@@ -22,10 +22,12 @@ export default function Navbar() {
   };
 
   const dropdownLinks = [
-    { name: "Manage Users", href: "/users", show: role === "admin" },
-    { name: "Manage Interns", href: "/interns", show: role === "admin" },
+    { name: "Manage Users", href: "/admin/users", show: role === "admin" },
+    { name: "Manage Interns", href: "/admin/interns", show: role === "admin" },
     
-    { name: "Manage Department", href: "/department", show: role === "admin" },
+    { name: "Manage Department", href: "/admin/department", show: role === "admin" },
+    { name: "Assign Task", href: "/manager/tasks", show: role === "manager" },
+    { name: "Tasks", href: "/interns/tasks", show: role === "intern" },
   ];
 
   return (

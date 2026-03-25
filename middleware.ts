@@ -39,12 +39,16 @@ export async function middleware(req: NextRequest) {
   }
 
   // INTERN ACCESS
-  if (role === "intern") {
-    if (!path.startsWith("/dashboard/user")) {
-      url.pathname = "/dashboard/user";
-      return NextResponse.redirect(url);
-    }
+  // INTERN ACCESS
+if (role === "intern") {
+  if (
+    !path.startsWith("/dashboard/user") &&
+    !path.startsWith("/interns/tasks")
+  ) {
+    url.pathname = "/dashboard/user";
+    return NextResponse.redirect(url);
   }
+}
 
   return NextResponse.next();
 }
