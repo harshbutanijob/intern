@@ -6,7 +6,7 @@ import client from "../../../../lib/apolloClient";
 import bcrypt from "bcryptjs";
 
 
-type User = { id: string; name: string; email: string; password: string; role: string; };
+type User = { id: string; name: string; email: string; password: string; role: string; department_id: number | null };
 type GetUserResult = { users: User[] };
 
 export const authOptions: AuthOptions = {
@@ -26,6 +26,7 @@ export const authOptions: AuthOptions = {
               email
               password
               role
+              department_id
             }
           }
         `;
@@ -43,7 +44,7 @@ export const authOptions: AuthOptions = {
         if (!isValid) return null;
 
         
-        return { id: user.id, name: user.name, email: user.email, role: user.role };
+        return { id: user.id, name: user.name, email: user.email, role: user.role, department_id: user.department_id };
       },
     }),
   ],
@@ -53,7 +54,8 @@ export const authOptions: AuthOptions = {
         token.id = user.id  ??"";
         token.name = user.name??"";
         token.email = user.email??"";
-        token.role = user.role; 
+        token.role = user.role;
+        token.department_id = (user as any).department_id ?? null;
       }
       return token;
     },
@@ -62,8 +64,8 @@ export const authOptions: AuthOptions = {
         session.user.id = token.id as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
-        session.user.role = token.role as string; 
-        
+        session.user.role = token.role as string;
+        session.user.department_id = token.department_id as number | null;
       }
       return session;
     },

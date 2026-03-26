@@ -15,8 +15,10 @@ export async function middleware(req: NextRequest) {
   if (!token) {
     if (
       path.startsWith("/dashboard") ||
+      path.startsWith("/admin") ||
       path.startsWith("/users") ||
-      path.startsWith("/interns")
+      path.startsWith("/interns") ||
+      path.startsWith("/manager")
     ) {
       url.pathname = "/login";
       return NextResponse.redirect(url);
@@ -30,25 +32,29 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // MANAGER ACCESS
+  // MANAGER ACCESS — can only access /dashboard/manager and /manager/*
   if (role === "manager") {
-    if (!path.startsWith("/dashboard/manager")) {
-      url.pathname = "/dashboard/manager";
-      return NextResponse.redirect(url);
+    if (
+      path.startsWith("/dashboard/manager") ||
+      path.startsWith("/manager")
+    ) {
+      return NextResponse.next();
     }
+    url.pathname = "/dashboard/manager";
+    return NextResponse.redirect(url);
   }
 
-  // INTERN ACCESS
-  // INTERN ACCESS
-if (role === "intern") {
-  if (
-    !path.startsWith("/dashboard/user") &&
-    !path.startsWith("/interns/tasks")
-  ) {
+  // INTERN ACCESS — can only access /dashboard/user and /interns/*
+  if (role === "intern") {
+    if (
+      path.startsWith("/dashboard/user") ||
+      path.startsWith("/interns")
+    ) {
+      return NextResponse.next();
+    }
     url.pathname = "/dashboard/user";
     return NextResponse.redirect(url);
   }
-}
 
   return NextResponse.next();
 }
@@ -56,6 +62,8 @@ if (role === "intern") {
 export const config = {
   matcher: [
     "/dashboard/:path*",
+    "/admin/:path*",
+    "/manager/:path*",
     "/users/:path*",
     "/interns/:path*",
   ],

@@ -111,7 +111,7 @@ export async function POST(req: Request) {
       fetchPolicy: "no-cache",
     });
 
-    if ((emailData?.users ?? []).length > 0) {
+    if (((emailData as any)?.users ?? []).length > 0) {
       return NextResponse.json({ error: "Email already exists" }, { status: 400 });
     }
 
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       variables: { object: insertObject },
     });
 
-    const createdUser = data?.insert_users_one;
+    const createdUser = (data as any)?.insert_users_one;
 
     // Add to interns table if role is intern
     if (createdUser?.role === "intern") {
@@ -156,7 +156,7 @@ export async function PUT(req: Request) {
         variables: { email },
         fetchPolicy: "no-cache",
       });
-      const existingUser = emailData?.users?.find((u: any) => u.id !== id);
+      const existingUser = (emailData as any)?.users?.find((u: any) => u.id !== id);
       if (existingUser) {
         return NextResponse.json({ error: "Email already exists" }, { status: 400 });
       }
@@ -182,7 +182,7 @@ export async function PUT(req: Request) {
       fetchPolicy: "no-cache",
     });
 
-    const oldRole = userData?.users_by_pk?.role;
+    const oldRole = (userData as any)?.users_by_pk?.role;
 
     // Update user
     const { data } = await client.mutate({
@@ -190,7 +190,7 @@ export async function PUT(req: Request) {
       variables: { id, changes: { ...changes, role } },
     });
 
-    const updatedUser = data?.update_users_by_pk;
+    const updatedUser = (data as any)?.update_users_by_pk;
 
     // Sync interns table
     if (role === "intern" && oldRole !== "intern") {
@@ -207,7 +207,7 @@ export async function PUT(req: Request) {
         fetchPolicy: "no-cache",
       });
 
-      if ((existingIntern?.interns ?? []).length === 0) {
+      if (((existingIntern as any)?.interns ?? []).length === 0) {
         await client.mutate({
           mutation: INSERT_INTERN,
           variables: { object: { user_id: updatedUser?.id } },
@@ -232,11 +232,19 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const body = await req.json();
+    const { id } = body;
+
+    // Delete intern profile first (if exists) to avoid FK violation
+    await client.mutate({
+      mutation: DELETE_INTERN,
+      variables: { user_id: id },
+    });
+
     const { data } = await client.mutate({
       mutation: DELETE_USER,
-      variables: { id: body.id },
+      variables: { id },
     });
-    return NextResponse.json({ id: data?.delete_users_by_pk.id });
+    return NextResponse.json({ id: (data as any)?.delete_users_by_pk?.id });
   } catch (err) {
     console.error("DELETE /users error:", err);
     return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });

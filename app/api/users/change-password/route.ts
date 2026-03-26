@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import client from "@/lib/apolloClient";
 import { gql } from "@apollo/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 const GET_USER = gql`
   query GetUser($id: Int!) {
@@ -25,7 +27,17 @@ const UPDATE_PASSWORD = gql`
 
 export async function PUT(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { user_id, current_password, new_password } = await req.json();
+
+    // Ensure users can only change their own password (admins can change any)
+    if (session.user.role !== "admin" && String(session.user.id) !== String(user_id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // 1️⃣ Get user
     const { data } = await client.query({
@@ -33,7 +45,7 @@ export async function PUT(req: Request) {
       variables: { id: user_id },
     });
 
-    const user = data?.users_by_pk;
+    const user = (data as any)?.users_by_pk;
 
     if (!user) {
       return NextResponse.json({ error: "User not found" });

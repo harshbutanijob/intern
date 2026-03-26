@@ -15,9 +15,16 @@ export default function Navbar() {
 
   const isActive = (path: string) => pathname === path;
 
+  const dashboardHref =
+    role === "manager"
+      ? "/dashboard/manager"
+      : role === "intern"
+      ? "/dashboard/user"
+      : "/dashboard";
+
   const dashboardLink = {
     name: "Dashboard",
-    href: "/dashboard",
+    href: dashboardHref,
     show: status === "authenticated",
   };
 

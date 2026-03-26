@@ -1,6 +1,4 @@
-"use client";
-
-import { SessionProvider } from "next-auth/react";
+import Providers from "./components/Providers";
 import Navbar from "./components/Navbar";
 import "./globals.css";
 
@@ -8,12 +6,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <SessionProvider>
+        <Providers>
           <Navbar />
           <div style={{ paddingTop: "4rem", minHeight: "100vh" }}>
             {children}
           </div>
-        </SessionProvider>
+        </Providers>
       </body>
     </html>
   );

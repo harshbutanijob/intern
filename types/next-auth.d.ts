@@ -6,20 +6,20 @@ declare module "next-auth" {
       id: string;
       name: string;
       email: string;
-      role: string; // Add role to session user
-      department?: string | null; // Optional, only for managers
+      role: string;
+      department_id?: number | null;
     };
   }
 
   interface User {
     id: string;
     role: string;
-    department?: string | null;
+    department_id?: number | null;
   }
 
   interface AdapterUser {
     role: string;
-    department?: string | null;
+    department_id?: number | null;
   }
 }
 
@@ -28,8 +28,8 @@ declare module "next-auth/jwt" {
     id?: string;
     name?: string;
     email?: string;
-    role?: string; // Add role to JWT
-    department?: string | null; // Optional, only for managers
+    role?: string;
+    department_id?: number | null;
   }
 }
 

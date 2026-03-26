@@ -15,8 +15,9 @@ type GetInternsResponse = {
 
 export async function GET(
   req: Request,
-  { params }: { params: { deptId: string } }
+  { params }: { params: Promise<{ deptId: string }> }
 ) {
+  const { deptId } = await params;
   const query = gql`
     query GetInterns($deptId:Int!) {
       users(where:{
@@ -32,7 +33,7 @@ export async function GET(
   try {
     const { data } = await client.query<GetInternsResponse>({
       query,
-      variables: { deptId: Number(params.deptId) },
+      variables: { deptId: Number(deptId) },
       fetchPolicy: "no-cache",
     });
 

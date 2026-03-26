@@ -104,7 +104,7 @@ export default function DepartmentManager() {
   };
 
 return (
-  <div className="min-h-screen bg-white p-10">
+  <div className="min-h-screen p-10">
 
     <div className="max-w-3xl mx-auto">
 

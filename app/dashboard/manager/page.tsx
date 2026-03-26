@@ -1,5 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../api/auth/[...nextauth]/route";
+import client from "@/lib/apolloClient";
+import { gql } from "@apollo/client";
 
 interface User {
   id: number;
@@ -19,10 +21,44 @@ interface Intern {
   start_date: string;
 }
 
-export default async function ManagerPage() {
+const GET_MANAGER = gql`
+  query GetManager($id: Int!) {
+    users_by_pk(id: $id) {
+      id
+      name
+      email
+      role
+      department_id
+      department {
+        name
+      }
+    }
+  }
+`;
 
-const session = await getServerSession(authOptions);
-if (!session || !session.user) {
+const GET_INTERNS = gql`
+  query GetInternsByDepartment($departmentId: Int!) {
+    users(
+      where: {
+        department_id: { _eq: $departmentId }
+        role: { _eq: "intern" }
+      }
+    ) {
+      id
+      name
+      email
+      intern {
+        college
+        phone_number
+        start_date
+      }
+    }
+  }
+`;
+
+export default async function ManagerPage() {
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
     return (
       <div className="p-8 max-w-lg mx-auto">
         <div className="alert-error flex items-center gap-3">
@@ -34,17 +70,46 @@ if (!session || !session.user) {
       </div>
     );
   }
-const userId = Number(session.user.id);
 
+  const userId = Number(session.user.id);
 
-  const res = await fetch(
-  `${process.env.NEXTAUTH_URL}/api/manager?userId=${session.user.id}`,
-  {
-    cache: "no-store",
-  }
-);
+  let manager: User | null = null;
+  let interns: Intern[] = [];
 
-  if (!res.ok) {
+  try {
+    const managerResult = await client.query({
+      query: GET_MANAGER,
+      variables: { id: userId },
+      fetchPolicy: "network-only",
+    });
+
+    const m = (managerResult.data as any)?.users_by_pk;
+    if (m) {
+      manager = {
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        role: m.role,
+        department: m.department?.name ?? "Unknown",
+      };
+
+      const internsResult = await client.query({
+        query: GET_INTERNS,
+        variables: { departmentId: m.department_id },
+        fetchPolicy: "network-only",
+      });
+
+      interns = ((internsResult.data as any)?.users ?? []).map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        department: manager!.department,
+        college: u.intern?.college ?? "",
+        phone_number: u.intern?.phone_number ?? "",
+        start_date: u.intern?.start_date ?? "",
+      }));
+    }
+  } catch {
     return (
       <div className="p-8 text-center">
         Failed to load manager data
@@ -52,10 +117,9 @@ const userId = Number(session.user.id);
     );
   }
 
-  const data = await res.json();
-
-  const manager: User = data.manager;
-  const interns: Intern[] = data.interns;
+  if (!manager) {
+    return <div className="p-8 text-center">Manager profile not found.</div>;
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto">

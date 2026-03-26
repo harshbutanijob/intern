@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 interface Intern {
   id: number;
@@ -22,6 +23,8 @@ interface Department {
 
 export default function InternDashboard() {
 
+  const { data: session, status } = useSession();
+  const userId = session?.user?.id ? Number(session.user.id) : null;
   const [intern, setIntern] = useState<Intern | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [editing, setEditing] = useState(false);
@@ -45,36 +48,33 @@ export default function InternDashboard() {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!userId) return;
       try {
+        const [internRes, deptRes] = await Promise.all([
+          fetch(`/api/data?userId=${userId}`),
+          fetch("/api/departments"),
+        ]);
 
-        const internRes = await fetch("/api/interns");
         const internData = await internRes.json();
-
-        const deptRes = await fetch("/api/departments");
         const deptData = await deptRes.json();
 
         setDepartments(deptData.departments || []);
 
-        if (internData?.length > 0) {
-
-          const userIntern = internData[0];
-
-          setIntern(userIntern);
-
+        if (internData && !internData.error) {
+          setIntern(internData);
           setForm({
-            college: userIntern.college || "",
-            phone_number: userIntern.phone_number || "",
-            start_date: userIntern.start_date || "",
+            college: internData.college || "",
+            phone_number: internData.phone_number || "",
+            start_date: internData.start_date || "",
           });
         }
-
       } catch (err) {
         console.error(err);
       }
     };
 
     loadData();
-  }, []);
+  }, [userId]);
 
   // ---------------- GET DEPARTMENT NAME ----------------
 
@@ -175,10 +175,18 @@ export default function InternDashboard() {
 
   // ---------------- LOADING ----------------
 
-  if (!intern) {
+  if (status === "loading" || (status === "authenticated" && !intern)) {
     return (
       <div className="p-8 text-center">
         Loading intern data...
+      </div>
+    );
+  }
+
+  if (!intern) {
+    return (
+      <div className="p-8 text-center text-red-500">
+        Profile not found. Contact your administrator.
       </div>
     );
   }

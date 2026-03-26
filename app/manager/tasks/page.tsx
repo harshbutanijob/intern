@@ -35,9 +35,10 @@ export default function ManagerTasks() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   async function loadTasks() {
-    const res = await fetch("/api/tasks/manager");
+    if (!managerId) return;
+    const res = await fetch(`/api/tasks/manager?assignedBy=${managerId}`);
     const data = await res.json();
-    setTasks(data);
+    setTasks(Array.isArray(data) ? data : []);
   }
 
   async function loadInterns() {
@@ -121,8 +122,10 @@ export default function ManagerTasks() {
   }
 
   useEffect(() => {
-    loadTasks();
-    loadInterns();
+    if (managerId) {
+      loadTasks();
+      loadInterns();
+    }
   }, [managerId]);
 
   return (

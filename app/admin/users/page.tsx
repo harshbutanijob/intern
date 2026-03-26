@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import bcrypt from "bcryptjs";
 import DataTable from "react-data-table-component";
 
 const roles = ["admin", "manager", "intern"];
@@ -102,11 +101,6 @@ export default function AdminUsers() {
     setEmailError("");
 
     try {
-      let hashedPassword = form.password;
-      if (form.password) {
-        hashedPassword = await bcrypt.hash(form.password, 10);
-      }
-
       const method = editingUserId ? "PUT" : "POST";
 
       const payload: any = {
@@ -115,7 +109,7 @@ export default function AdminUsers() {
         role: form.role,
       };
 
-      if (hashedPassword) payload.password = hashedPassword;
+      if (form.password) payload.password = form.password;
       if (form.department_id !== null) payload.department_id = form.department_id;
       if (editingUserId) payload.id = editingUserId;
 
@@ -205,7 +199,7 @@ export default function AdminUsers() {
   ];
 
   return (
-    <div className="min-h-screen bg-white p-10">
+    <div className="min-h-screen p-10">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-10">
           <div>
